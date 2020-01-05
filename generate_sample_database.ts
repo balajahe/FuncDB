@@ -19,7 +19,7 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
                     "tocache": 1     
                 },
                 "name": "partner ${i}",
-                "type": "${arand(partner_types)}"
+                "type": "partner.${arand(partner_types)}"
             }`
         if (compact) doc = JSON.stringify(JSON.parse(doc))
         await wr.write(new TextEncoder().encode(doc + '\x01'))
@@ -38,7 +38,7 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
                     "tocache": 1     
                 },
                 "name": "invent ${i}",
-                "type": "${arand(invent_types)}"
+                "type": "invent.${arand(invent_types)}"
             }`
         if (compact) doc = JSON.stringify(JSON.parse(doc))
         await wr.write(new TextEncoder().encode(doc + '\x01'))
