@@ -90,7 +90,8 @@ export class FuncDB  {
                     this.cache.set(id, doc2)
                     return doc2
                 } else {
-                    return undefined
+                    this.cache.set(id, id)
+                    return id
                 }
             }
         }
