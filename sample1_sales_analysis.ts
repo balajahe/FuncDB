@@ -25,16 +25,16 @@ async function calc(db: FuncDB) {
         (_, doc) => doc.type == 'sale', // фильтруем только продажи
         (result, doc) => {
             result.doccou++
-            doc.lines.reduce((_, line) => { // цикл по строкам
+            doc.lines.forEach(line => { // цикл по строкам
                 result.linecou++
-                result.sum += line.price * line.qty
-            }, null) // локальный аккумулятор не используем
+                result.amount += line.price * line.qty
+            })
         },
-        {sum:0, doccou:0, linecou:0} // инициируем аккумулятор (результат)
+        {amount: 0, doccou: 0, linecou: 0} // инициируем аккумулятор
     )
     console.log(`
-        amount total = ${res.sum}
+        amount total = ${res.amount}
         amount per document = ${res.sum / res.doccou}
-        lines per document = ${res.linecou / res.doccou}
-    `)
+        lines per document = ${res.linecou / res.doccou}`
+    )
 }
