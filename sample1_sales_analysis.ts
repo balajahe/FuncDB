@@ -1,6 +1,6 @@
 import { FuncDB } from "./FuncDB.ts"
-
 const db = FuncDB.open('./sample_database/')
+
 await calc(db)
 db.add(JSON.parse(`
     {
@@ -8,10 +8,10 @@ db.add(JSON.parse(`
             "code": "sale.xxx"
         },
         "type": "sale",
-        "partner": "partner.xxx|1577698000000",
+        "partner": "partner.xxx|1577697000000",
         "lines": [
             {
-                "invent": "invent.xxx|1577698000000",
+                "invent": "invent.xxx|1577697000000",
                 "qty": 33,
                 "price": 333
             }
@@ -23,7 +23,7 @@ await calc(db)
 async function calc(db: FuncDB) {
     let res = await db.reduce(
         (_, doc) => doc.type == 'sale', // фильтруем только продажи
-        (result, doc) => {
+        async (result, doc) => {
             result.doccou++
             doc.lines.forEach(line => { // цикл по строкам
                 result.linecou++
@@ -34,7 +34,7 @@ async function calc(db: FuncDB) {
     )
     console.log(`
         amount total = ${res.amount}
-        amount per document = ${res.sum / res.doccou}
+        amount per document = ${res.amount / res.doccou}
         lines per document = ${res.linecou / res.doccou}`
     )
 }
