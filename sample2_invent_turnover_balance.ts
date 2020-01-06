@@ -1,23 +1,28 @@
 import { FuncDB } from "./FuncDB.ts"
-
 const db = FuncDB.open('./sample_database/')
+
+class ResultRow { // строка результирующей таблицы
+    invent_name = ''
+    partner_name = ''
+    debit_qty = 0
+    debit_amount = 0
+    credit_qty = 0
+    credit_amount = 0
+}
 
 let res = await db.reduce(
     (_, doc) => doc.type == 'purch' || doc.type == 'sale',
-    (result, doc) => {
-        doc.lines.forEach(async function(line) { // цикл по строкам
+    async (result, doc) => {
+        for (const line of doc.lines) {
             const key = line.invent + doc.partner
             let row = result.get(key)
             if (row === undefined) {
-                row = {
-                    // подзапросы для получения наименований
-                    invent_name: (await db.get(line.invent)).name,
-                    partner_name: (await db.get(doc.partner)).name,
-                    debit_qty: 0,
-                    debit_amount: 0,
-                    credit_qty: 0,
-                    credit_amount: 0
-                }
+                row = new ResultRow()
+                // наименования получаем подзапросами к базе
+                const invent = await db.get(line.invent)
+                const partner = await db.get(doc.partner)
+                row.invent_name = invent ? invent.name : 'invent not found'
+                row.partner_name = partner ? partner.name : 'partner not found'
                 result.set(key, row)
             }
             if (doc.type == 'purch') {
@@ -27,15 +32,15 @@ let res = await db.reduce(
                 row.credit_qty += line.qty
                 row.credit_amount += line.qty * line.price
             }
-        })
+        }
     },
-    new Map() // результат - таблица комбинаций товар-партнер
+    new Map<string, ResultRow>() // результирующая таблиц
 )
 console.log('\ninvent name | partner name | debet qty | debet amount | credit qty | credit amount | balance amount')
 console.log('===================================================================================================')
 let cou = 0
 for (const row of res.values()) {
-    cou++
+    cou++; if (cou > 10) break
     console.log('' +
         row.invent_name + ' | ' +
         row.partner_name + ' | ' +
