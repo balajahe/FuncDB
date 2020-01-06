@@ -1,8 +1,8 @@
 import { BufWriter } from "https://deno.land/std/io/bufio.ts";
 
 Deno.mkdirSync('sample_database');
-await generate('sample_database/database_immutable.json', 5, 100, true)
-await generate('sample_database/database_current.json', 5, 100, false)
+await generate('sample_database/database_immutable.json', 100, 100000, true)
+await generate('sample_database/database_current.json', 10, 10000, true)
 
 async function generate(fname: string, diccou: number, doccou: number, compact: boolean = false) {
     const wr = new BufWriter(Deno.openSync(fname, 'w'))
