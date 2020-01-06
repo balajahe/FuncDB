@@ -11,14 +11,14 @@ class ResultRow { // строка результирующей таблицы
 }
 
 let res = await db.reduce(
-    (_, doc) => doc.type == 'purch' || doc.type == 'sale',
+    async (_, doc) => doc.type == 'purch' || doc.type == 'sale',
     async (result, doc) => {
-        for (const line of doc.lines) {
+        for (const line of doc.lines) { // используем цикл вместо forEach() из-за await внутри
             const key = line.invent + doc.partner
             let row = result.get(key)
             if (row === undefined) {
                 row = new ResultRow()
-                // наименования получаем подзапросами к базе
+                // наименования получаем подзапросами к базе (они кэшируются)
                 const invent = await db.get(line.invent)
                 const partner = await db.get(doc.partner)
                 row.invent_name = invent ? invent.name : 'invent not found'
@@ -34,13 +34,16 @@ let res = await db.reduce(
             }
         }
     },
-    new Map<string, ResultRow>() // результирующая таблиц
+    new Map<string, ResultRow>() // результирующая таблица
 )
 console.log('\ninvent name | partner name | debet qty | debet amount | credit qty | credit amount | balance amount')
 console.log('===================================================================================================')
 let cou = 0
 for (const row of res.values()) {
-    cou++; if (cou > 10) break
+    cou++; if (cou > 10) {
+        console.log(' < tail skipped >')
+        break
+    }
     console.log('' +
         row.invent_name + ' | ' +
         row.partner_name + ' | ' +
