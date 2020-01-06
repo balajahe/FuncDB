@@ -3,8 +3,7 @@ import { BufReader } from "https://deno.land/std/io/bufio.ts";
 const enum DBFile {
     Immutable = 'database_immutable.json',
     Current = 'database_current.json',
-    Cache = 'database_cache.json',
-    Metadata = 'database_metadata.json'
+    Cache = 'database_cache.json'
 }
 
 type Document = any
@@ -14,7 +13,7 @@ export class FuncDB  {
     private dbpath: string
     //private global_cache: Map<string, Document>
     private session_cache: Map<string, Document>
-    private log: any
+    private log: Log
 
     private constructor(dbpath: string) {
         this.dbpath = dbpath
@@ -26,7 +25,7 @@ export class FuncDB  {
     }
 
     public async reduce(
-        filter: (result: Result, doc: Document) => boolean, 
+        filter: (result: Result, doc: Document) => Promise<boolean>, 
         reducer: (result: Result, doc: Document) => Promise<void>,
         result: Result
     ): Promise<Result> {
@@ -44,16 +43,16 @@ export class FuncDB  {
 
     private async reduce1(
         fname: string,
-        filter: (result: Result, doc: Document) => boolean, 
+        filter: (result: Result, doc: Document) => Promise<boolean>, 
         reducer: (result: Result, doc: Document) => Promise<void>,
         result: Result
     ): Promise<Result> {
         const db = new BufReader(Deno.openSync(this.dbpath + fname))
-        this.init_log(fname)
+        this.log = new Log(fname)
         while(true) {
             const chunk = await db.readString('\x01')
             if (chunk == Deno.EOF) {
-                this.write_log()
+                this.log.write()
                 break
             }
             this.log.discovered++
@@ -64,7 +63,7 @@ export class FuncDB  {
                     if (doc.sys.tocache == 1) {
                         this.session_cache.set(doc.sys.id, doc)
                     }
-                    if(filter(result, doc)) {
+                    if(await filter(result, doc)) {
                         await reducer(result, doc)
                         this.log.processed++
                     }
@@ -113,7 +112,7 @@ export class FuncDB  {
         }
     }
 
-    public async add(doc: Document) {
+    public add(doc: Document) {
         const sys = doc.sys
         sys.ts = Date.now()
         sys.id = sys.code + '|' + sys.ts
@@ -121,27 +120,27 @@ export class FuncDB  {
         f.writeSync(new TextEncoder().encode(JSON.stringify(doc) + '\x01'))
         f.close()
     }
+}
 
-    private init_log(fname: string) {
-        this.log = {
-            fname: fname,
-            discovered: 0,
-            parsed: 0,
-            parseerror: 0,
-            processed: 0,
-            processerror: 0,
-            elapsed: Date.now()
-        }
+class Log {
+    fname = ''
+    discovered = 0
+    parsed = 0
+    parseerror = 0
+    processed = 0
+    processerror = 0
+    elapsed = Date.now()
+    constructor(fname) {
+        this.fname = fname
     }
-
-    private write_log() {
-        this.log.elapsed = (Date.now() - this.log.elapsed) / 1000
+    write() {
+        this.elapsed = (Date.now() - this.elapsed) / 1000
         console.log(`
-            file: ${this.log.fname}:
-            ${this.log.discovered} docs discovered
-            ${this.log.parsed} docs parsed (${this.log.parseerror} errors)
-            ${this.log.processed} docs processed (${this.log.processerror} errors)
-            ${this.log.elapsed}s elapsed`
+            file: ${this.fname}:
+            ${this.discovered} docs discovered
+            ${this.parsed} docs parsed \x1b[31m(${this.parseerror} errors)\x1b[0m
+            ${this.processed} docs processed \x1b[31m(${this.processerror} errors)\x1b[0m
+            ${this.elapsed}s elapsed`
         )
     }
 }
