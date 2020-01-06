@@ -22,7 +22,7 @@ await calc(db)
 
 async function calc(db: FuncDB) {
     let res = await db.reduce(
-        (_, doc) => doc.type == 'sale', // фильтруем только продажи
+        async (_, doc) => doc.type == 'sale', // фильтруем только продажи
         async (result, doc) => {
             result.doccou++
             doc.lines.forEach(line => { // цикл по строкам
