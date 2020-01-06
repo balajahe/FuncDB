@@ -3,20 +3,22 @@ import { BufReader } from "https://deno.land/std/io/bufio.ts";
 const enum DBFile {
     Immutable = 'database_immutable.json',
     Current = 'database_current.json',
-    Metadata = 'database_metadata.json',
-    Cache = 'database_cache.json'
+    Cache = 'database_cache.json',
+    Metadata = 'database_metadata.json'
 }
+
 type Document = any
 type Result = any
 
 export class FuncDB  {
     private dbpath: string
-    private cache: Map<string, any>
+    //private global_cache: Map<string, Document>
+    private session_cache: Map<string, Document>
     private log: any
 
     private constructor(dbpath: string) {
         this.dbpath = dbpath
-        this.cache = new Map()
+        this.session_cache = new Map()
     }
 
     public static open(dbpath: string): FuncDB {
@@ -25,16 +27,16 @@ export class FuncDB  {
 
     public async reduce(
         filter: (result: Result, doc: Document) => boolean, 
-        reducer: (result: Result, doc: Document) => void,
+        reducer: (result: Result, doc: Document) => Promise<void>,
         result: Result
     ): Promise<Result> {
         const key = filter.toString() + reducer.toString() + JSON.stringify(result)
-        const cached = this.cache.get(key)
-        if (cached === undefined) {
-            await this.reduce1(DBFile.Immutable, filter, reducer, result)
-            this.cache.set(key, JSON.stringify(result))
-        } else {
+        const cached = this.session_cache.get(key)
+        if (cached !== undefined) {
             result = JSON.parse(cached)
+        } else {
+            await this.reduce1(DBFile.Immutable, filter, reducer, result)
+            this.session_cache.set(key, JSON.stringify(result))
         }
         await this.reduce1(DBFile.Current, filter, reducer, result)
         return result
@@ -43,7 +45,7 @@ export class FuncDB  {
     private async reduce1(
         fname: string,
         filter: (result: Result, doc: Document) => boolean, 
-        reducer: (result: Result, doc: Document) => void,
+        reducer: (result: Result, doc: Document) => Promise<void>,
         result: Result
     ): Promise<Result> {
         const db = new BufReader(Deno.openSync(this.dbpath + fname))
@@ -56,11 +58,14 @@ export class FuncDB  {
             }
             this.log.discovered++
             try {
-                const doc =  JSON.parse(chunk.slice(0,-1))
+                const doc = JSON.parse(chunk.slice(0,-1))
                 this.log.parsed++
                 try {
+                    if (doc.sys.tocache == 1) {
+                        this.session_cache.set(doc.sys.id, doc)
+                    }
                     if(filter(result, doc)) {
-                        reducer(result, doc)
+                        await reducer(result, doc)
                         this.log.processed++
                     }
                 } catch(e) {
@@ -76,23 +81,16 @@ export class FuncDB  {
     }
 
     public async get(id: string): Promise<Document | undefined> {
-        const cached = this.cache.get(id)
+        let cached = this.session_cache.get(id)
         if (cached !== undefined) {
             return cached
         } else {
-            const doc1 = await this.get1(DBFile.Immutable, id)
-            if (doc1 !== undefined) {
-                this.cache.set(id, doc1)
-                return doc1
+            const doc = await this.get1(DBFile.Immutable, id)
+            if (doc !== undefined) {
+                this.session_cache.set(id, doc)
+                return doc
             } else {
-                const doc2 = await this.get1(DBFile.Current, id)
-                if (doc2 !== undefined) {
-                    this.cache.set(id, doc2)
-                    return doc2
-                } else {
-                    this.cache.set(id, id)
-                    return id
-                }
+                return await this.get1(DBFile.Current, id)
             }
         }
     }
