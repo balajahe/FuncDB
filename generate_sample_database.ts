@@ -16,10 +16,10 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
                     "code": "partner.${i}",
                     "ts": ${partner_ts},
                     "id": "partner.${i}^${partner_ts}",
-                    "tocache": 1     
+                    "cache": 1     
                 },
-                "name": "partner ${i}",
-                "type": "partner.${arand(partner_types)}"
+                "type": "partner.${arand(partner_types)}",
+                "name": "partner ${i}"
             }`
         if (compact) doc = JSON.stringify(JSON.parse(doc))
         await wr.write(new TextEncoder().encode(doc + '\x01'))
@@ -27,6 +27,8 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
 
     const invent_types = ['tool', 'material', 'asset']
     const invent_ts = Date.now()
+    const date = new Date().toISOString().substr(0,10)
+
     for (let i=0; i<diccou; i++) {
         const ts = Date.now()
         let doc = `
@@ -35,10 +37,10 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
                     "code": "invent.${i}",
                     "ts": ${invent_ts},
                     "id": "invent.${i}^${invent_ts}",
-                    "tocache": 1     
+                    "cache": 1     
                 },
-                "name": "invent ${i}",
-                "type": "invent.${arand(invent_types)}"
+                "type": "invent.${arand(invent_types)}",
+                "name": "invent ${i}"
             }`
         if (compact) doc = JSON.stringify(JSON.parse(doc))
         await wr.write(new TextEncoder().encode(doc + '\x01'))
@@ -70,6 +72,7 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
                     "id": "${type}.${i}^${ts}"  
                 },
                 "type": "${type}",
+                "date": "${date}",
                 "partner": "${partner}",
                 "lines": ${lines}
             }`
