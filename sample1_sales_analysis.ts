@@ -8,6 +8,7 @@ db.add(JSON.parse(`
             "code": "sale.xxx"
         },
         "type": "sale",
+        "date": "2020-01-07",
         "partner": "partner.xxx^1577698000000",
         "lines": [
             {
