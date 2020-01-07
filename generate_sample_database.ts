@@ -15,7 +15,7 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
                 "sys": {
                     "code": "partner.${i}",
                     "ts": ${partner_ts},
-                    "id": "partner.${i}|${partner_ts}",
+                    "id": "partner.${i}^${partner_ts}",
                     "tocache": 1     
                 },
                 "name": "partner ${i}",
@@ -34,7 +34,7 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
                 "sys": {
                     "code": "invent.${i}",
                     "ts": ${invent_ts},
-                    "id": "invent.${i}|${invent_ts}",
+                    "id": "invent.${i}^${invent_ts}",
                     "tocache": 1     
                 },
                 "name": "invent ${i}",
@@ -48,10 +48,10 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
     for (let i=0; i<doccou; i++) {
         const ts = Date.now()
         const type = arand(doc_types)
-        const partner = 'partner.' + irand(0,diccou-1) + '|' + partner_ts
+        const partner = 'partner.' + irand(0,diccou-1) + '^' + partner_ts
         let lines = '['
         for (let j=0; j<irand(1,10); j++) {
-            const invent = 'invent.' + irand(0,diccou-1) + '|' + invent_ts
+            const invent = 'invent.' + irand(0,diccou-1) + '^' + invent_ts
             if (j > 0) lines += ','
             lines += `
                     {
@@ -67,7 +67,7 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
                 "sys": {
                     "code": "${type}.${i}",
                     "ts": ${ts},
-                    "id": "${type}.${i}|${ts}"  
+                    "id": "${type}.${i}^${ts}"  
                 },
                 "type": "${type}",
                 "partner": "${partner}",
