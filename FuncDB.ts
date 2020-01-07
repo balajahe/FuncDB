@@ -115,7 +115,7 @@ export class FuncDB  {
     public add(doc: Document) {
         const sys = doc.sys
         sys.ts = Date.now()
-        sys.id = sys.code + '|' + sys.ts
+        sys.id = sys.code + '^' + sys.ts
         const f = Deno.openSync(this.dbpath + DBFile.Current, 'a')
         f.writeSync(new TextEncoder().encode(JSON.stringify(doc) + '\x01'))
         f.close()
