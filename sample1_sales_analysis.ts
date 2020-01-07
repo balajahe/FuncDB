@@ -8,10 +8,10 @@ db.add(JSON.parse(`
             "code": "sale.xxx"
         },
         "type": "sale",
-        "partner": "partner.xxx|1577697000000",
+        "partner": "partner.xxx^1577698000000",
         "lines": [
             {
-                "invent": "invent.xxx|1577697000000",
+                "invent": "invent.xxx^1577698000000",
                 "qty": 33,
                 "price": 333
             }
@@ -25,12 +25,12 @@ async function calc(db: FuncDB) {
         async (_, doc) => doc.type == 'sale', // фильтруем только продажи
         async (result, doc) => {
             result.doccou++
-            doc.lines.forEach(line => { // цикл по строкам
+            doc.lines.forEach(line => { // цикл по строкам документа
                 result.linecou++
                 result.amount += line.price * line.qty
             })
         },
-        {amount: 0, doccou: 0, linecou: 0} // инициируем аккумулятор
+        {amount: 0, doccou: 0, linecou: 0} // инициализируем аккумулятор
     )
     console.log(`
         amount total = ${res.amount}
