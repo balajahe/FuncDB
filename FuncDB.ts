@@ -149,6 +149,7 @@ export class FuncDB {
         const f = Deno.openSync(this.dbpath + DBFile.Current, 'a')
         f.writeSync(new TextEncoder().encode(JSON.stringify(doc) + '\x01'))
         f.close()
+        this.top_cache.set(sys.code, doc)
     }
 }
 
