@@ -20,10 +20,8 @@ let res = await db.reduce(
             if (row === undefined) {
                 row = new ResultRow()
                 // наименования получаем подзапросами к базе (они кэшируются)
-                const invent = await db.get(line.invent)
-                const partner = await db.get(doc.partner)
-                row.invent_name = invent ? invent.name : line.invent + ' not found'
-                row.partner_name = partner ? partner.name : doc.partner + ' not found'
+                row.invent_name = (await db.get(line.invent)).name ?? ' not found'
+                row.partner_name = (await db.get(doc.partner)).name ?? ' not found'
                 result.set(key, row)
             }
             if (doc.type == 'purch') {
