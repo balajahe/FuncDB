@@ -1,4 +1,4 @@
-import { BufReader } from "https://deno.land/std/io/bufio.ts";
+import { BufReader } from "https://deno.land/std/io/bufio.ts"
 
 const enum DBFile {
     Immutable = 'database_immutable.json',
