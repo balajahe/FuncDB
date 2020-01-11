@@ -1,4 +1,4 @@
-import { BufWriter } from "https://deno.land/std/io/bufio.ts";
+import { BufWriter } from "https://deno.land/std/io/bufio.ts"
 
 Deno.mkdirSync('sample_database');
 await generate('sample_database/database_immutable.json', 100, 100000, true)
