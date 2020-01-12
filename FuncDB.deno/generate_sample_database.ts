@@ -27,8 +27,6 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
 
     const invent_types = ['tool', 'material', 'asset']
     const invent_ts = Date.now()
-    const date = new Date().toISOString().substr(0,10)
-
     for (let i=0; i<diccou; i++) {
         let doc = `
             {
@@ -46,13 +44,14 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
     }
 
     const doc_types = ['purch', 'sale']
+    const date = new Date().toISOString().substr(0,10)
     for (let i=0; i<doccou; i++) {
         const ts = Date.now()
         const type = arand(doc_types)
-        const partner = 'partner.' + irand(0,diccou-1) + '^' + partner_ts
+        const partner = 'partner.' + irand(0, diccou-1) + '^' + partner_ts
         let lines = '['
         for (let j=0; j<irand(1,10); j++) {
-            const invent = 'invent.' + irand(0,diccou-1) + '^' + invent_ts
+            const invent = 'invent.' + irand(0, diccou-1) + '^' + invent_ts
             if (j > 0) lines += ','
             lines += `
                     {
