@@ -1,4 +1,4 @@
-import { FuncDB } from "./FuncDB.ts"
+import { FuncDB } from './FuncDB.ts'
 const db = FuncDB.open('./sample_database/')
 
 await calc(db)

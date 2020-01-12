@@ -1,4 +1,4 @@
-import { FuncDB } from "./FuncDB.ts"
+import { FuncDB } from './FuncDB.ts'
 const db = FuncDB.open('./sample_database/')
 
 class ResultRow { // строка результирующей таблицы
@@ -20,8 +20,8 @@ let res = await db.reduce(
             if (row === undefined) {
                 row = new ResultRow()
                 // наименования получаем подзапросами к базе (они кэшируются)
-                row.invent_name = (await db.get(line.invent)).name ?? ' not found'
-                row.partner_name = (await db.get(doc.partner)).name ?? ' not found'
+                row.invent_name = (await db.get(line.invent))?.name ?? ' not found'
+                row.partner_name = (await db.get(doc.partner))?.name ?? ' not found'
                 result.set(key, row)
             }
             if (doc.type == 'purch') {
@@ -36,6 +36,7 @@ let res = await db.reduce(
     },
     new Map<string, ResultRow>() // результирующая таблица
 )
+
 console.log('\ninvent name | partner name | debet qty | debet amount | credit qty | credit amount | balance amount')
 console.log('===================================================================================================')
 let cou = 0
