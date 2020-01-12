@@ -84,13 +84,13 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
 }
 
 function frand(min, max) {
-    let rand = min + Math.random() * (max - min);
-    return rand;
+    const rand = min + Math.random() * (max - min)
+    return rand
 }
 
 function irand(min, max) {
-    let rand = min + Math.random() * (max + 1 - min);
-    return Math.floor(rand);
+    const rand = min + Math.random() * (max + 1 - min)
+    return Math.floor(rand)
 }
   
 function arand(arr: any[]) {
