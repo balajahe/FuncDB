@@ -1,3 +1,3 @@
 Exec under Deno: https://deno.land/
 
-$ deno --allow-all <filename>
+$ deno --allow-all filename
