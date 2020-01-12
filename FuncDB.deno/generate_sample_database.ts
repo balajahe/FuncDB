@@ -30,7 +30,6 @@ async function generate(fname: string, diccou: number, doccou: number, compact: 
     const date = new Date().toISOString().substr(0,10)
 
     for (let i=0; i<diccou; i++) {
-        const ts = Date.now()
         let doc = `
             {
                 "sys": {
