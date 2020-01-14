@@ -1,3 +1,3 @@
-Exec under Deno: https://deno.land/
+Run under Deno: https://deno.land/
 
 $ deno&emsp;--allow-all&emsp;filename.ts
