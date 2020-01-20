@@ -1,5 +1,5 @@
-import { FuncDB } from './FuncDB.ts'
-const db = FuncDB.open('./sample_database/')
+import { DBCore } from './core/DBCore.ts' 
+const db = DBCore.open('./sample_database/')
 
 class ResultRow { // строка результирующей таблицы
     invent_name = ''
@@ -10,18 +10,17 @@ class ResultRow { // строка результирующей таблицы
     credit_amount = 0
 }
 
-let res = await db.reduce(
-    async (_, doc) => doc.type == 'purch' || doc.type == 'sale',
-    async (result, doc) => {
-        // поскольку внутри цикла у нас await - параллелим обработку строк
-        const promises = doc.lines.map(async (line) => {
-            const key = line.invent + doc.partner
+let res = db.reduce(
+    (_, doc) => doc.type == 'purch' || doc.type == 'sale',
+    (result, doc) => {
+        doc.lines.forEach((line) => {
+            const key = line.nomen + doc.person
             let row = result.get(key)
             if (row === undefined) {
                 row = new ResultRow()
                 // наименования получаем подзапросами к базе (они кэшируются)
-                row.invent_name = (await db.get(line.invent))?.name ?? ' not found'
-                row.partner_name = (await db.get(doc.partner))?.name ?? ' not found'
+                row.invent_name = (db.get(line.nomen))?.name ?? ' not found'
+                row.partner_name = (db.get(doc.person))?.name ?? ' not found'
                 result.set(key, row)
             }
             if (doc.type == 'purch') {
@@ -32,7 +31,6 @@ let res = await db.reduce(
                 row.credit_amount += line.qty * line.price
             }
         })
-        await Promise.all(promises)
     },
     new Map<string, ResultRow>() // результирующая таблица
 )
