@@ -1,8 +1,9 @@
-import { FuncDB } from './FuncDB.ts'
-const db = FuncDB.open('./sample_database/')
-
-await calc(db)
-db.add(JSON.parse(`
+import { DBCore } from './core/DBCore.ts' 
+const db = DBCore.open('./sample_database/')  
+ 
+calc(db)
+/*
+db.add_immut(JSON.parse(`
     {
         "sys": {
             "code": "sale.xxx"
@@ -19,12 +20,13 @@ db.add(JSON.parse(`
         ]
     }
 `))
-await calc(db)
+*/
+calc(db)
 
-async function calc(db: FuncDB) {
-    let res = await db.reduce(
-        async (_, doc) => doc.type == 'sale', // фильтруем только продажи
-        async (result, doc) => {
+function calc(db: DBCore) {
+    let res = db.reduce(
+        (_, doc) => doc.type == 'sale', // фильтруем только продажи
+        (result, doc) => {
             result.doccou++
             doc.lines.forEach(line => { // цикл по строкам документа
                 result.linecou++
