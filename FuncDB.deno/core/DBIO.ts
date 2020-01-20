@@ -5,8 +5,8 @@ const read_buf_size = 40960
 const chunk_buf_size = 40960
 
 export interface DBReader {
-    get_sync?(): Document | false
-    get_async?(): Promise<Document | false> 
+    next?(): Document | false
+    next?(): Promise<Document | false> 
 }   
 
 export class DBReaderSync implements DBReader {
@@ -25,7 +25,7 @@ export class DBReaderSync implements DBReader {
         this.logger = logger
     }
 
-    get_sync(): Document | false {
+    next(): Document | false {
         let res_a: Uint8Array
         while (this.p2 > -1 || this.read_buf()) {
             this.p2 = this.buf.indexOf(this.delim, this.p1)
@@ -62,7 +62,7 @@ export class DBReaderSync implements DBReader {
                     return res_o
                 } catch(e) {
                     console.log(res_s + '\n' + e)
-                    return this.get_sync()
+                    return this.next()
                 }
         }
     }
@@ -94,7 +94,7 @@ export class DBReaderAsync implements DBReader {
         this.reader = new BufReader(this.file, read_buf_size)
     }
 
-    async get_async(): Promise<Document | false> {
+    async next(): Promise<Document | false> {
         let res_s = await this.reader.readString(this.delim)
         switch (res_s) {
             case Deno.EOF:
@@ -109,7 +109,7 @@ export class DBReaderAsync implements DBReader {
                     return res_o
                 } catch(e) {
                     console.log(res_s + '\n' + e)
-                    return await this.get_async()
+                    return await this.next()
                 }
         }
     } 

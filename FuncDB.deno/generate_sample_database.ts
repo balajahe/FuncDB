@@ -25,14 +25,14 @@ personcou *= mut_scale
 nomencou  *= mut_scale
 stockcou *= mut_scale
 doccou *= mut_scale
-await gen_file(DBMeta.mut_data_file)
+await gen_file(DBMeta.data_mut)
 
 personcou *= immut_scale
 nomencou  *= immut_scale
 stockcou *= immut_scale
 doccou *= immut_scale
 compact = true
-await gen_file(DBMeta.immut_data_file)
+await gen_file(DBMeta.data_immut)
 
 
 async function gen_file(fname: string) {

@@ -1,14 +1,13 @@
 import { Document, Result, DBMeta, DocClass, DBLogger } from './DBMeta.ts'
-import { DBReaderSync, DBReaderAsync } from './DBIO.ts'
+import { DBReaderSync } from './DBIO.ts'
 import get_doc_class from '../doc_classes/.get_doc_class.ts'
 
 export class DBCore {
     private dbpath: string
-    //private doc_sys_classes = new Map<string, DocClass>()
-    private mut_data = new Map<string, Document>()
-    private immut_cache = new Map<string, Result>()
-    private top_cache = new Map<string, Document>()
-    private log: Log
+    private mut_current = new Map<string, Document>()
+    private cache_doc_full = new Map<string, Document>()
+    private cache_doc_top = new Map<string, Document>()
+    private cache_reduce = new Map<string, Result>()
 
     private constructor(dbpath) { 
         this.dbpath = dbpath 
@@ -19,26 +18,26 @@ export class DBCore {
         db.init()
         return db
     }
-
+   
     private init() {
         console.log('\ndatabase initialization started...')
-        this.log = new Log(DBMeta.immut_data_file, 'init')
-        const db = new DBReaderSync(this.dbpath + DBMeta.immut_data_file, this.log)
-        for (let doc = db.get_sync(); doc; doc = db.get_sync()) {
-            try {
-                this.attach_doc_class(doc)
-                this.log.inc_classified()
-                if (doc.sys.cache) {
-                    this.immut_cache.set(doc.sys.id, doc)
-                    this.top_cache.set(doc.sys.code, doc)
-                    this.log.inc_processed()
-                }
-            } catch(e) {
-                console.log(JSON.stringify(doc) + '\n' + e)
+
+        let db = new DBIterator(this.dbpath + DBMeta.data_immut, 'init')
+        for (let doc = db.next(); doc; doc = db.next()) {
+            if (doc.sys.cache) {
+                this.cache_doc_full.set(doc.sys.id, doc)
+                this.cache_doc_top.set(doc.sys.code, doc)
+                db.log.inc_processed()
             }
-            this.log.print_progress()
         }
-        this.log.write()
+        db.log.write()
+
+        db = new DBIterator(this.dbpath + DBMeta.data_mut, 'init')
+        for (let doc = db.next(); doc; doc = db.next()) {
+            this.mut_current.set(doc.sys.id, doc)
+        }
+        db.log.write()
+
         console.log('\ndatabase is initialized !')
     }
 
@@ -49,15 +48,14 @@ export class DBCore {
     ): Result {
         console.log('\nreduce() started...')
         const key = filter.toString() + reducer.toString() + JSON.stringify(result)
-        const cached = this.immut_cache.get(key)
+        const cached = this.cache_reduce.get(key)
         if (cached !== undefined) {
             result = JSON.parse(cached)
         } else {
-            this.reduce1(DBMeta.immut_data_file, filter, reducer, result)
-            this.immut_cache.set(key, JSON.stringify(result))
-            //this.write_cache(reducer)
+            this.reduce1(DBMeta.data_immut, filter, reducer, result)
+            this.cache_reduce.set(key, JSON.stringify(result))
         }
-        this.reduce1(DBMeta.mut_data_file, filter, reducer, result)
+        this.reduce1(DBMeta.data_mut, filter, reducer, result)
         return result
     }
 
@@ -67,75 +65,69 @@ export class DBCore {
         reducer: (result: Result, doc: Document) => void,
         result: Result
     ): Result {
-        this.log = new Log(fname, 'reduce')
-        const db = new DBReaderSync(this.dbpath + fname, this.log)
-        for (let doc = db.get_sync(); doc; doc = db.get_sync()) {
+        const db = new DBIterator(this.dbpath + fname, 'reduce')
+        for (let doc = db.next(); doc; doc = db.next()) {
             try {
-                this.attach_doc_class(doc)
-                this.log.inc_classified()
-                try {0
-                    if(filter(result, doc)) {
-                        reducer(result, doc)
-                        this.log.inc_processed()
-                    }
-                } catch(e) {
-                    console.log(JSON.stringify(doc) + '\n' + e)
-                    this.log.inc_processerror()
+                if(filter(result, doc)) {
+                    reducer(result, doc)
+                    db.log.inc_processed()
                 }
             } catch(e) {
                 console.log(JSON.stringify(doc) + '\n' + e)
+                db.log.inc_processerror()
             }
-            this.log.print_progress()
         }
-        this.log.write()
+        db.log.write()
         return result
     }
 
     get(id: string): Document | undefined {
-        let cached = this.immut_cache.get(id)
+        const cached = this.cache_doc_full.get(id)
         if (cached !== undefined) {
             return cached
         } else {
-            const doc = this.get1(DBMeta.immut_data_file, id)
-            if (doc !== undefined) {
-                this.immut_cache.set(id, doc)
-                return doc
+            const curr = this.mut_current.get(id)
+            if (curr !== undefined) {
+                return curr
             } else {
-                return undefined //await this.get1(DBFile.Current, id)
+                const doc = this.get1(DBMeta.data_immut, id)
+                if (doc !== undefined) {
+                    this.cache_doc_full.set(id, doc)
+                    return doc
+                } else {
+                    return undefined
+                }
             }
         }
     }
 
     private get1(fname: string, id: string): Document | undefined {
         const db = new DBReaderSync(this.dbpath + fname)
-        for (let obj = db.get_sync(); obj; obj = db.get_sync()) {
-            try {
-                if (obj.sys.id === id) {
-                    return obj
-                }
-            } catch(_) {}
+        for (let doc = db.next(); doc; doc = db.next()) {
+            if (doc.sys.id === id) {
+                return attach_doc_class(doc)
+            }
         }
     }
 
     gettop(code: string): Document | undefined {
-        let cached = this.top_cache.get(code)
+        let cached = this.cache_doc_top.get(code)
         if (cached !== undefined) {
             return cached
         } else {
-            this.gettop1(DBMeta.immut_data_file, code)
-            //await this.gettop1(DBFile.Current, code)
-            return this.top_cache.get(code)
+            this.gettop1(DBMeta.data_immut, code)
+            this.gettop1(DBMeta.data_mut, code)
+            return this.cache_doc_top.get(code)
         }
     }
 
     private gettop1(fname: string, code: string): void {
         const db = new DBReaderSync(this.dbpath + fname)
-        for (let obj = db.get_sync(); obj; obj = db.get_sync()) {
-            try {
-                if (obj.sys.code === code) {
-                    this.top_cache.set(code, obj)
-                }
-            } catch(_) {}
+        for (let doc = db.next(); doc; doc = db.next()) {
+            if (doc.sys.code === code) {
+                attach_doc_class(doc)
+                this.cache_doc_top.set(code, doc)
+            }
         }
     }
 
@@ -156,10 +148,46 @@ export class DBCore {
         f.close()
     }
 */
-    private attach_doc_class(doc: Document): void {
-        const cl = get_doc_class(doc.sys.class)
-        cl.attach(doc)
+}
+
+class DBIterator {
+    private from_file: boolean
+    private db: DBReaderSync
+    private mm: Map<string, Document>
+    public readonly log: Log
+
+    constructor(source: string | Map<string, Document>, logmode: string) {
+        if (typeof source === 'string') {
+            this.from_file = true
+            this.log = new Log(source, logmode)
+            this.db = new DBReaderSync(source, this.log)
+        } else {
+            this.from_file = false
+        }
     }
+
+    next(): Document | false {
+        switch (this.from_file) {
+            case true:
+                let doc = this.db.next()
+                if (!doc) return false
+                try {
+                    attach_doc_class(doc)
+                    this.log.inc_classified()
+                    this.log.print_progress()
+                    return doc
+                } catch(e) {
+                    console.log(JSON.stringify(doc) + '\n' + e)
+                    return this.next()
+                }
+            case false:
+                return false
+        }
+    }
+}
+
+function attach_doc_class(doc: Document): Document {
+    return get_doc_class(doc.sys.class).attach(doc)
 }
 
 class Log implements DBLogger {

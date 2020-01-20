@@ -2,8 +2,9 @@ import { DBCore } from './core/DBCore.ts'
 const db = DBCore.open('./sample_database/')
 
 class ResultRow { // строка результирующей таблицы
-    invent_name = ''
-    partner_name = ''
+    nomen_type = ''
+    person_type = ''
+    stock_type = ''
     debit_qty = 0
     debit_amount = 0
     credit_qty = 0
@@ -14,15 +15,21 @@ let res = db.reduce(
     (_, doc) => doc.type == 'purch' || doc.type == 'sale',
     (result, doc) => {
         doc.lines.forEach((line) => {
-            const key = line.nomen + doc.person
+            // типы получаем подзапросами к базе (они кэшируются)
+            const nomen_type = (db.get(line.nomen))?.type ?? ' not found'
+            const person_type = (db.get(doc.person))?.type ?? ' not found'
+            const stock_type = (db.get(doc.stock))?.type ?? ' not found'
+
+            const key = nomen_type + person_type + stock_type
             let row = result.get(key)
             if (row === undefined) {
                 row = new ResultRow()
-                // наименования получаем подзапросами к базе (они кэшируются)
-                row.invent_name = (db.get(line.nomen))?.name ?? ' not found'
-                row.partner_name = (db.get(doc.person))?.name ?? ' not found'
+                row.nomen_type = nomen_type
+                row.person_type = person_type
+                row.stock_type = stock_type
                 result.set(key, row)
             }
+            
             if (doc.type == 'purch') {
                 row.debit_qty += line.qty
                 row.debit_amount += line.qty * line.price
@@ -35,14 +42,15 @@ let res = db.reduce(
     new Map<string, ResultRow>() // результирующая таблица
 )
 
-console.log('\ninvent name | partner name | debet qty | debet amount | credit qty | credit amount | balance amount')
+console.log('\nomen type | person type | stock type | debet qty | debet amount | credit qty | credit amount | balance amount')
 console.log('===================================================================================================')
 let cou = 0
 for (const row of res.values()) {
-    cou++; if (cou > 10) { console.log(' < tail skipped >'); break }
+    cou++; //if (cou > 20) { console.log(' < tail skipped >'); break }
     console.log('' +
-        row.invent_name + ' | ' +
-        row.partner_name + ' | ' +
+        row.nomen_type + ' | ' +
+        row.person_type + ' | ' +
+        row.stock_type + ' | ' +
         row.debit_qty + ' | ' +            
         row.debit_amount + ' | ' +            
         row.credit_qty + ' | ' +            
