@@ -1,9 +1,8 @@
-import { Document, DocClass } from '../core/DBMeta.ts'
-import { DBCore } from '../core/DBCore.ts'
+import { Document, DocClass, IDBCore } from '../core/DBMeta.ts'
 
 export default class extends DocClass {
-    static after_add(doc: Document): void {
-        super.after_add(doc)
+    static after_add(doc: Document, db: IDBCore): void {
+        super.after_add(doc, db)
         doc.lines.forEach(l => {
             console.log(l.qty)
         })

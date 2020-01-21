@@ -1,12 +1,12 @@
-import { Document, Result, DBMeta, DocClass, DBLogger } from './DBMeta.ts'
+import { Document, Result, DBMeta, IDBCore, IDBLogger } from './DBMeta.ts'
 import { DBReaderSync } from './DBIO.ts'
-import get_doc_class from '../doc_classes/.get_doc_class.ts'
+import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
 
-export class DBCore {
+export class DBCore implements IDBCore {
     private dbpath: string
     private mut_current = new Map<string, Document>()
-    private cache_doc_full = new Map<string, Document>()
-    private cache_doc_top = new Map<string, Document>()
+    private cache_doc = new Map<string, Document>()
+    private cache_top = new Map<string, Document>()
     private cache_reduce = new Map<string, Result>()
 
     private constructor(dbpath) { 
@@ -22,21 +22,24 @@ export class DBCore {
     private init() {
         console.log('\ndatabase initialization started...')
 
-        let db = new DBIterator(this.dbpath + DBMeta.data_immut, 'init')
+        let db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
-            if (doc.sys.cache) {
-                this.cache_doc_full.set(doc.sys.id, doc)
-                this.cache_doc_top.set(doc.sys.code, doc)
+            if (doc.sys.cache_doc) {
+                this.cache_doc.set(doc.sys.id, doc)
                 db.log.inc_processed()
             }
+            if (doc.sys.cache_top) {
+                this.cache_top.set(doc.sys.code, doc)
+                db.log.inc_processed1()
+            }
         }
-        db.log.write()
+        db.log.print()
 
-        db = new DBIterator(this.dbpath + DBMeta.data_mut, 'init')
+        db = new DBReaderClassify(this.dbpath + DBMeta.data_mut_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
             this.mut_current.set(doc.sys.id, doc)
         }
-        db.log.write()
+        db.log.print()
 
         console.log('\ndatabase is initialized !')
     }
@@ -52,37 +55,36 @@ export class DBCore {
         if (cached !== undefined) {
             result = JSON.parse(cached)
         } else {
-            this.reduce1(DBMeta.data_immut, filter, reducer, result)
+            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'reduce-file')
+            for (let doc = db.next(); doc; doc = db.next()) {
+                reduce1(doc, db.log)
+            }
+            db.log.print()
             this.cache_reduce.set(key, JSON.stringify(result))
         }
-        this.reduce1(DBMeta.data_mut, filter, reducer, result)
+        const log = new Log('in-memory', 'reduce-memory')
+        for (let doc of this.mut_current.values()) {
+            log.inc_total()
+            reduce1(doc, log)
+        }
+        log.print()
         return result
-    }
 
-    private reduce1(
-        fname: string,
-        filter: (result: Result, doc: Document) => boolean, 
-        reducer: (result: Result, doc: Document) => void,
-        result: Result
-    ): Result {
-        const db = new DBIterator(this.dbpath + fname, 'reduce')
-        for (let doc = db.next(); doc; doc = db.next()) {
+        function reduce1(doc: Document, log?: Log) {
             try {
                 if(filter(result, doc)) {
                     reducer(result, doc)
-                    db.log.inc_processed()
+                    log?.inc_processed()
                 }
             } catch(e) {
-                console.log(JSON.stringify(doc) + '\n' + e)
-                db.log.inc_processerror()
+                console.log(JSON.stringify(doc, null, '\t') + '\n' + e)
+                log?.inc_processerror()
             }
         }
-        db.log.write()
-        return result
     }
 
     get(id: string): Document | undefined {
-        const cached = this.cache_doc_full.get(id)
+        const cached = this.cache_doc.get(id)
         if (cached !== undefined) {
             return cached
         } else {
@@ -90,158 +92,138 @@ export class DBCore {
             if (curr !== undefined) {
                 return curr
             } else {
-                const doc = this.get1(DBMeta.data_immut, id)
-                if (doc !== undefined) {
-                    this.cache_doc_full.set(id, doc)
-                    return doc
-                } else {
-                    return undefined
-                }
+                const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
+                for (let doc = db.next(); doc; doc = db.next()) {
+                    if (doc.sys.id === id) {
+                        attach_doc_class(doc)
+                        this.cache_doc.set(id, doc)
+                        return doc
+                    }
+                } 
+                return undefined
             }
         }
     }
 
-    private get1(fname: string, id: string): Document | undefined {
-        const db = new DBReaderSync(this.dbpath + fname)
-        for (let doc = db.next(); doc; doc = db.next()) {
-            if (doc.sys.id === id) {
-                return attach_doc_class(doc)
-            }
-        }
-    }
-
-    gettop(code: string): Document | undefined {
-        let cached = this.cache_doc_top.get(code)
+    get_top(code: string): Document | undefined {
+        let cached = this.cache_top.get(code)
         if (cached !== undefined) {
             return cached
         } else {
-            this.gettop1(DBMeta.data_immut, code)
-            this.gettop1(DBMeta.data_mut, code)
-            return this.cache_doc_top.get(code)
-        }
-    }
-
-    private gettop1(fname: string, code: string): void {
-        const db = new DBReaderSync(this.dbpath + fname)
-        for (let doc = db.next(); doc; doc = db.next()) {
-            if (doc.sys.code === code) {
-                attach_doc_class(doc)
-                this.cache_doc_top.set(code, doc)
+            const db = new DBReaderSync(this.dbpath + DBMeta.data_immut)
+            for (let doc = db.next(); doc; doc = db.next()) {
+                if (doc.sys.code === code) {
+                    this.cache_top.set(code, doc)
+                }
             }
+            for (let doc of this.mut_current.values()) {
+                if (doc.sys.code === code) {
+                    this.cache_top.set(code, doc)
+                }
+            }
+            return this.cache_top.get(code)
         }
     }
 
-/*
-    public add_immut(doc: Document) {
+    public add_mut(doc: Document): boolean {
         const sys = doc.sys
         sys.ts = Date.now()
         sys.id = sys.code + '^' + sys.ts
-        const dbf = Deno.openSync(this.dbpath + DBMeta.immut_file, 'a')
-        dbf.writeSync(new TextEncoder().encode(JSON.stringify(doc) + DBMeta.immut_delim))
-        dbf.close()
-        this.top_cache.set(sys.code, doc)
+        attach_doc_class(doc)
+        this.mut_current.set(doc.sys.id, doc)
+        return true
     }
-
-    private write_cache(cache: any) {
-        const f = Deno.openSync(this.dbpath + DBMeta., "a")
-        f.writeSync(new TextEncoder().encode(cache + '\n'))
-        f.close()
-    }
-*/
 }
 
-class DBIterator {
-    private from_file: boolean
+class DBReaderClassify {
     private db: DBReaderSync
-    private mm: Map<string, Document>
-    public readonly log: Log
+    public readonly log?: Log
 
-    constructor(source: string | Map<string, Document>, logmode: string) {
-        if (typeof source === 'string') {
-            this.from_file = true
-            this.log = new Log(source, logmode)
-            this.db = new DBReaderSync(source, this.log)
-        } else {
-            this.from_file = false
-        }
+    constructor(fpath: string, logmode?: string) {
+        if (logmode !== null) this.log = new Log(fpath, logmode)
+        this.db = new DBReaderSync(fpath, this.log)
     }
 
     next(): Document | false {
-        switch (this.from_file) {
-            case true:
-                let doc = this.db.next()
-                if (!doc) return false
-                try {
-                    attach_doc_class(doc)
-                    this.log.inc_classified()
-                    this.log.print_progress()
-                    return doc
-                } catch(e) {
-                    console.log(JSON.stringify(doc) + '\n' + e)
-                    return this.next()
-                }
-            case false:
-                return false
+        let doc = this.db.next()
+        if (!doc) return false
+        try {
+            attach_doc_class(doc)
+            this.log?.inc_classified()
+            this.log?.print_progress()
+            return doc
+        } catch(e) {
+            console.log(JSON.stringify(doc, null, '\t') + '\n' + e)
+            return this.next()
         }
     }
 }
 
-function attach_doc_class(doc: Document): Document {
-    return get_doc_class(doc.sys.class).attach(doc)
+function attach_doc_class(doc: Document): void {
+    get_doc_class(doc.sys.class).attach(doc)
 }
 
-class Log implements DBLogger {
-    readonly outcou = 10000
+class Log implements IDBLogger {
+    readonly printcou = 10000
     readonly start = Date.now()
-    fname = ''
-    outmode = ''
+    source = ''
+    printmode = ''
     total = 0
     parsed = 0
     classified = 0
     processed = 0
+    processed1 = 0
     processerror = 0
     cou = 0
-    constructor(fname, outmode) {
-        this.fname = fname 
-        this.outmode = outmode
+    constructor(source: string, printmode: string) {
+        this.source = source 
+        this.printmode = printmode
     }
     inc_total() { this.total++;  this.cou++ }
     inc_parsed() { this.parsed++ }
     inc_classified() { this.classified++ }
     inc_processed() { this.processed++ }
+    inc_processed1() { this.processed++ }
     inc_processerror() { this.processerror++ }
     print_progress() {
-        if (this.cou === this.outcou) {
-            this.write()
-            console.log('\x1b[8A') 
+        if (this.cou === this.printcou) {
+            const lines = this.print()
             this.cou = 0
+            console.log('\x1b[' + lines + 'A') 
         }
     }
-    write() {
+    print(): number {
         const elapsed = (Date.now() - this.start) / 1000
-        switch (this.outmode) {
-            case 'init': {
+        switch (this.printmode) {
+            case 'init':
                 console.log(`
-                    file: ${this.fname}
-                    ${this.total} chunks discovered
-                    ${this.parsed} objs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
+                    source: "${this.source}"
+                    ${this.total} docs discovered
+                    ${this.parsed} docs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
                     ${this.classified} docs classified \x1b[31m(${this.parsed - this.classified}\x1b[0m DocClass errors)
-                    ${this.processed} docs cached
+                    ${this.processed} docs placed in doc-cache
+                    ${this.processed1} docs placed in top-cache
                     ${elapsed}s elapsed`
                 )
-                break
-            }
-            case 'reduce': {
+                return 9
+            case 'reduce-file':
                 console.log(`
-                    file: ${this.fname}
+                    source: "${this.source}"
                     ${this.total} docs discovered
-                    ${this.parsed} objs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
-                    ${this.classified} docs classified \x1b[31m(${this.parsed - this.classified}\x1b[0m DocSysClass errors)
+                    ${this.parsed} docs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
+                    ${this.classified} docs classified \x1b[31m(${this.parsed - this.classified}\x1b[0m DocClass errors)
                     ${this.processed} docs processed \x1b[31m(${this.processerror}\x1b[0m BL errors)
                     ${elapsed}s elapsed`
                 )
-                break
-            }
+                return 8
+            case 'reduce-memory':
+                console.log(`
+                    source: "${this.source}"
+                    ${this.total} docs discovered
+                    ${this.processed} docs processed \x1b[31m(${this.processerror}\x1b[0m BL errors)
+                    ${elapsed}s elapsed`
+                )
+                return 6
         }    
     }
 }

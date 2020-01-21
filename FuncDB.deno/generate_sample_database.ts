@@ -25,7 +25,7 @@ personcou *= mut_scale
 nomencou  *= mut_scale
 stockcou *= mut_scale
 doccou *= mut_scale
-await gen_file(DBMeta.data_mut)
+await gen_file(DBMeta.data_mut_current)
 
 personcou *= immut_scale
 nomencou  *= immut_scale

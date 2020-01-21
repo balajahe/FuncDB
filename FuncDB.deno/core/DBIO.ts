@@ -1,17 +1,17 @@
 import { BufReader } from 'https://deno.land/std/io/bufio.ts'
-import { Document, DBMeta, DBLogger } from './DBMeta.ts'
+import { Document, DBMeta, IDBLogger } from './DBMeta.ts'
 
 const read_buf_size = 40960
 const chunk_buf_size = 40960
 
-export interface DBReader {
+export interface IDBReader {
     next?(): Document | false
     next?(): Promise<Document | false> 
 }   
 
-export class DBReaderSync implements DBReader {
+export class DBReaderSync implements IDBReader {
     private file: Deno.File
-    private logger?: DBLogger
+    private logger?: IDBLogger
     private delim: number = DBMeta.delim
     private buf = new Uint8Array(read_buf_size)
     private p1 = 0
@@ -20,7 +20,7 @@ export class DBReaderSync implements DBReader {
     private p3 = 0
     private decoder = new TextDecoder()
 
-    constructor(fpath: string, logger?: DBLogger) {
+    constructor(fpath: string, logger?: IDBLogger) {
         this.file = Deno.openSync(fpath, 'r')
         this.logger = logger
     }
@@ -82,13 +82,13 @@ export class DBReaderSync implements DBReader {
     }
 }
 
-export class DBReaderAsync implements DBReader {
+export class DBReaderAsync implements IDBReader {
     private file: Deno.File
-    private logger?: DBLogger
+    private logger?: IDBLogger
     private delim: string = String.fromCharCode(DBMeta.delim)
     private reader: BufReader
 
-    constructor(fpath: string, logger?: DBLogger) {
+    constructor(fpath: string, logger?: IDBLogger) {
         this.file = Deno.openSync(fpath, 'r')
         this.logger = logger
         this.reader = new BufReader(this.file, read_buf_size)
