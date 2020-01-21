@@ -40,7 +40,8 @@ export interface IDBCore {
     ): Result;
     get(id: string): Document | false;
     get_top(code: string): Document | false;
-    add_mut(doc: Document): boolean;
+    code_from_id(id: string): string;
+    add_mut(doc: Document): string | false;
 }
 
 export interface IDBLogger {

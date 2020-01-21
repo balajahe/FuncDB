@@ -77,7 +77,7 @@ export class DBCore implements IDBCore {
                     log?.inc_processed()
                 }
             } catch(e) {
-                console.log(JSON.stringify(doc, null, '\t') + '\n' + e)
+                console.log(JSON.stringify(doc, null, '\t') + '\n' + e.stack)
                 log?.inc_processerror()
             }
         }
@@ -125,16 +125,21 @@ export class DBCore implements IDBCore {
         }
     }
 
-    add_mut(doc: Document): boolean {
+    code_from_id(id: string): string {
+        return id.slice(0, id.indexOf('^'))
+    }
+
+    add_mut(doc: Document): string | false {
         const sys = doc.sys
         sys.ts = Date.now()
         sys.id = sys.code + '^' + sys.ts
         attach_doc_class(doc)
         this.mut_current.set(doc.sys.id, doc)
-        return true
+        doc.sys.after_add(doc, this)
+        return sys.id
     }
 
-    flush_mut(): void {
+    flush(): void {
         const db = DBWriter.rewrite(this.dbpath + DBMeta.data_mut_current)
         for (const doc of this.mut_current.values()) {
             db.add(doc)

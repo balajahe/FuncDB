@@ -62,7 +62,7 @@ export class DBReaderSync implements IDBReader {
                     this.logger?.inc_parsed()
                     return res_o
                 } catch(e) {
-                    console.log(res_s + '\n' + e)
+                    console.log(res_s + '\n' + e.stack)
                     return this.next()
                 }
         }
@@ -109,7 +109,7 @@ export class DBReaderAsync implements IDBReader {
                     this.logger?.inc_parsed()
                     return res_o
                 } catch(e) {
-                    console.log(res_s + '\n' + e)
+                    console.log(res_s + '\n' + e.stack)
                     return await this.next()
                 }
         }
@@ -128,7 +128,8 @@ export class DBWriter {
     static rewrite(fpath: string) { return new DBWriter(fpath, 'w') }
 
     add(doc: Document): void {
-        const doc_s = JSON.stringify(doc)
+        const doc_s = JSON.stringify(doc, null, '\t')
+//        const doc_s = JSON.stringify(doc)
         this.file.writeSync(new TextEncoder().encode('\n' + doc_s + this.delim))
     }
 
