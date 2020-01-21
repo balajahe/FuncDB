@@ -48,7 +48,7 @@ for (const key of res.keys()) keys.push(key)
 keys.sort()
 
 console.log('\nstock type | nomen type | person type | debet qty | debet amount | credit qty | credit amount | balance amount')
-console.log('===================================================================================================')
+console.log('==============================================================================================================')
 let cou = 0
 for (const key of keys) {
     const row = res.get(key)

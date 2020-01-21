@@ -1,4 +1,4 @@
-import { DBCore } from './core/DBCore.ts' 
+import { DBCore } from './core/DBCore.ts'
 const db = DBCore.open('./sample_database/')  
  
 calc(db)
@@ -11,11 +11,11 @@ db.add_mut(JSON.parse(`
         },
         "type": "sale",
         "date": "2020-01-21",
-        "person": "person.2^1579595649996",
-        "stock": "stock.18^1579595649996",
+        "person": "${db.get_top('person.2').sys.id}",
+        "stock": "${db.get_top('stock.2').sys.id}",
         "lines": [
             {
-                "nomen": "nomen.6^1579595649996",
+                "nomen": "${db.get_top('nomen.2').sys.id}",
                 "qty": 8,
                 "price": 295.5228788368553
             }
@@ -24,6 +24,7 @@ db.add_mut(JSON.parse(`
 `))
 
 calc(db)
+db.flush_mut()
 
 function calc(db: DBCore) {
     let res = db.reduce(
@@ -38,6 +39,7 @@ function calc(db: DBCore) {
         {amount: 0, doccou: 0, linecou: 0} // инициализируем аккумулятор
     )
     console.log(`
+        =======================================
         amount total = ${res.amount}
         amount per document = ${res.amount / res.doccou}
         lines per document = ${res.linecou / res.doccou}`

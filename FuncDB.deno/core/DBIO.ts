@@ -1,8 +1,9 @@
-import { BufReader } from 'https://deno.land/std/io/bufio.ts'
+import { BufReader, BufWriter } from 'https://deno.land/std/io/bufio.ts'
 import { Document, DBMeta, IDBLogger } from './DBMeta.ts'
 
 const read_buf_size = 40960
 const chunk_buf_size = 40960
+const write_buf_size = 40960
 
 export interface IDBReader {
     next?(): Document | false
@@ -113,4 +114,25 @@ export class DBReaderAsync implements IDBReader {
                 }
         }
     } 
+}
+
+export class DBWriter {
+    private file: Deno.File
+    private delim: string = String.fromCharCode(DBMeta.delim)
+
+    private constructor(fpath: string, fmode: 'a' | 'w') {
+        this.file = Deno.openSync(fpath, fmode)
+    }
+
+    static append(fpath: string) { return new DBWriter(fpath, 'a') }
+    static rewrite(fpath: string) { return new DBWriter(fpath, 'w') }
+
+    add(doc: Document): void {
+        const doc_s = JSON.stringify(doc)
+        this.file.writeSync(new TextEncoder().encode('\n' + doc_s + this.delim))
+    }
+
+    close(): void {
+        this.file.close()
+    }
 }

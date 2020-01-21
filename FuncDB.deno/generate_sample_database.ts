@@ -1,4 +1,4 @@
-import { BufWriter } from 'https://deno.land/std/io/bufio.ts' 
+import { BufWriter } from 'https://deno.land/std/io/bufio.ts'
 import { DBMeta } from './core/DBMeta.ts'
 
 const dbpath = './sample_database/'

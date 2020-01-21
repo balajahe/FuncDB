@@ -1,5 +1,5 @@
 import { Document, Result, DBMeta, IDBCore, IDBLogger } from './DBMeta.ts'
-import { DBReaderSync } from './DBIO.ts'
+import { DBReaderSync, DBWriter } from './DBIO.ts'
 import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
 
 export class DBCore implements IDBCore {
@@ -133,6 +133,15 @@ export class DBCore implements IDBCore {
         this.mut_current.set(doc.sys.id, doc)
         return true
     }
+
+    flush_mut(): void {
+        const db = DBWriter.rewrite(this.dbpath + DBMeta.data_mut_current)
+        for (const doc of this.mut_current.values()) {
+            db.add(doc)
+        }
+        db.close()
+        console.log('\nmutable data written to disk !')
+    }
 }
 
 class DBReaderClassify {
@@ -183,7 +192,7 @@ class Log implements IDBLogger {
     inc_parsed() { this.parsed++ }
     inc_classified() { this.classified++ }
     inc_processed() { this.processed++ }
-    inc_processed1() { this.processed++ }
+    inc_processed1() { this.processed1++ }
     inc_processerror() { this.processerror++ }
     print_progress() {
         if (this.cou === this.printcou) {
