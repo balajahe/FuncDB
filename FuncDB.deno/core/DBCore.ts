@@ -125,7 +125,7 @@ export class DBCore implements IDBCore {
         }
     }
 
-    public add_mut(doc: Document): boolean {
+    add_mut(doc: Document): boolean {
         const sys = doc.sys
         sys.ts = Date.now()
         sys.id = sys.code + '^' + sys.ts
@@ -137,7 +137,7 @@ export class DBCore implements IDBCore {
 
 class DBReaderClassify {
     private db: DBReaderSync
-    public readonly log?: Log
+    readonly log?: Log
 
     constructor(fpath: string, logmode?: string) {
         if (logmode !== null) this.log = new Log(fpath, logmode)

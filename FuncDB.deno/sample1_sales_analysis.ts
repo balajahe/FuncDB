@@ -2,25 +2,27 @@ import { DBCore } from './core/DBCore.ts'
 const db = DBCore.open('./sample_database/')  
  
 calc(db)
-/*
-db.add_immut(JSON.parse(`
+
+db.add_mut(JSON.parse(`
     {
         "sys": {
-            "code": "sale.xxx"
+            "class": "sale",
+            "code": "sale.XXX" 
         },
         "type": "sale",
-        "date": "2020-01-07",
-        "partner": "partner.xxx^1577698000000",
+        "date": "2020-01-21",
+        "person": "person.2^1579595649996",
+        "stock": "stock.18^1579595649996",
         "lines": [
             {
-                "invent": "invent.xxx^1577698000000",
-                "qty": 33,
-                "price": 333
+                "nomen": "nomen.6^1579595649996",
+                "qty": 8,
+                "price": 295.5228788368553
             }
         ]
     }
 `))
-*/
+
 calc(db)
 
 function calc(db: DBCore) {
