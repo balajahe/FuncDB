@@ -10,7 +10,7 @@ function calc(db: DBCore) {
                 result.amount += line.price * line.qty
             })
         },
-        {amount: 0, doccou: 0, linecou: 0} // инициализируем аккумулятор
+        { amount: 0, doccou: 0, linecou: 0 }, // инициализируем аккумулятор
     )
     console.log(`
         =======================================
@@ -22,7 +22,7 @@ function calc(db: DBCore) {
 
 const db = DBCore.open('./sample_database/')  
 calc(db)
-db.add_mut(JSON.parse(`
+const add_ok = db.add_mut(JSON.parse(`
     {
         "sys": {
             "class": "sale",
@@ -35,11 +35,15 @@ db.add_mut(JSON.parse(`
         "lines": [
             {
                 "nomen": "${db.get_top('nomen.0').sys.id}",
-                "qty": 8,
+                "qty": 25,
                 "price": 295.5228788368553
             }
         ]
     }
 `))
-calc(db)
-db.flush()
+if (add_ok === true) {
+    calc(db)
+    db.flush()
+} else {
+    console.log('\nERROR: ' + add_ok)
+}

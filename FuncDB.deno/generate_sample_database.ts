@@ -58,7 +58,6 @@ async function gen_persons() {
                 "sys": {
                     "class": "ref",
                     "code": "person.${i}",
-                    "ts": ${ts},
                     "id": "person.${i}^${ts}"
                 },
                 "type": "person.${arand(person_types)}",
@@ -77,7 +76,6 @@ async function gen_nomens() {
                 "sys": {
                     "class": "ref",
                     "code": "nomen.${i}",
-                    "ts": ${ts},
                     "id": "nomen.${i}^${ts}"
                 },
                 "type": "nomen.${arand(nomen_types)}",
@@ -96,7 +94,6 @@ async function gen_stocks() {
                 "sys": {
                     "class": "ref",
                     "code": "stock.${i}",
-                    "ts": ${ts},
                     "id": "stock.${i}^${ts}" 
                 },
                 "type": "stock.${arand(stock_types)}",
@@ -145,7 +142,6 @@ async function gen_docs() {
                     "sys": {
                         "class": "${docclass}",
                         "code": "${doctype}.${i}",
-                        "ts": ${ts},
                         "id": "${doctype}.${i}^${ts}"  
                     },
                     "type": "${doctype}",

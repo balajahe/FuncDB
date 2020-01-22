@@ -42,12 +42,14 @@ export class DBCore implements IDBCore {
     reduce(
         filter: (result: Result, doc: Document) => boolean, 
         reducer: (result: Result, doc: Document) => void,
-        result: Result
+        result: Result,
     ): Result {
+        const key = filter.toString() + ',\n' + reducer.toString() + ',\n' + JSON.stringify(result)
+//        console.log('\nreduce() started...\n' + key)
         console.log('\nreduce() started...')
-        const key = filter.toString() + reducer.toString() + JSON.stringify(result)
         const cached = this.cache_reduce.get(key)
         if (cached !== undefined) {
+            console.log(`\n                    immutable part of result taken from cache`)
             result = JSON.parse(cached)
         } else {
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'reduce-file')
@@ -73,7 +75,8 @@ export class DBCore implements IDBCore {
                 }
             } catch(e) {
                 console.log(JSON.stringify(doc, null, '\t') + '\n' + e.stack)
-                log?.inc_processerror()
+                Deno.exit()
+                //log?.inc_processerror()
             }
         }
     }
@@ -120,15 +123,21 @@ export class DBCore implements IDBCore {
         }
     }
 
-    add_mut(doc: Document): string | false {
-        const sys = doc.sys
-        sys.ts = Date.now()
-        sys.id = sys.code + '^' + sys.ts
-        attach_doc_class(doc)
-        this.to_cache(doc)
-        this.mut_current.push(doc)
-        doc.class.after_add(doc, this)
-        return sys.id
+    add_mut(doc: Document): true | string {
+        try {
+            if (doc.sys.id === undefined) doc.sys.id = doc.sys.code + '^' + Date.now()
+            attach_doc_class(doc)
+            const ok = doc.class.before_add(doc, this)
+            if (ok === true) {
+                this.to_cache(doc)
+                this.mut_current.push(doc)
+                doc.class.after_add(doc, this)
+            }
+            return ok
+        } catch(e) {
+            console.log(e)
+            Deno.exit()
+        }
     }
 
     code_from_id(id: string): string {
@@ -145,7 +154,7 @@ export class DBCore implements IDBCore {
             db.add(doc)
         }
         db.close()
-        console.log('\nmutable data written to disk !')
+        console.log('\nmut_current data written to disk !')
     }
 
     private to_cache(doc: Document, log?: Log) {
@@ -179,7 +188,8 @@ class DBReaderClassify {
             return doc
         } catch(e) {
             console.log(JSON.stringify(doc, null, '\t') + '\n' + e)
-            return this.next()
+            Deno.exit()
+            //return this.next()
         }
     }
 }

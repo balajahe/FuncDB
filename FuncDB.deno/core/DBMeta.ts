@@ -14,10 +14,10 @@ export abstract class DocClass {
     static cache_doc = false
     static cache_top = false
 
-    static before_del(doc: Document, db: IDBCore): boolean { return true }
+    static before_del(doc: Document, db: IDBCore): true | string { return true }
     static after_del(doc: Document, db: IDBCore): void {}
 
-    static before_add(doc: Document, db: IDBCore): boolean { return true }
+    static before_add(doc: Document, db: IDBCore): true | string { return true }
     static after_add(doc: Document, db: IDBCore): void {}
 }
 
@@ -25,13 +25,13 @@ export interface IDBCore {
     reduce(
         filter: (result: Result, doc: Document) => boolean, 
         reducer: (result: Result, doc: Document) => void,
-        result: Result
+        result: Result,
     ): Result;
-    get(id: string): Document | undefined;
-    get_top(code: string): Document | undefined;
-    add_mut(doc: Document): string | false;
-    code_from_id(id: string): string;
-    doc_class(classname: string): DocClass;
+    get(id: string): Document | undefined
+    get_top(code: string): Document | undefined
+    add_mut(doc: Document): true | string
+    code_from_id(id: string): string
+    doc_class(classname: string): DocClass
 }
 
 export interface IDBLogger {
