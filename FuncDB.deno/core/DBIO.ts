@@ -1,4 +1,4 @@
-import { BufReader, BufWriter } from 'https://deno.land/std/io/bufio.ts'
+import { BufReader } from 'https://deno.land/std/io/bufio.ts'
 import { Document, DBMeta, IDBLogger } from './DBMeta.ts'
 
 const read_buf_size = 40960

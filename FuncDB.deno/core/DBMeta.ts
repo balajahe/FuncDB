@@ -14,17 +14,6 @@ export abstract class DocClass {
     static cache_doc = false
     static cache_top = false
 
-    static attach(doc: Document): void {
-        doc.sys.cache_doc = this.cache_doc
-        doc.sys.cache_top = this.cache_top
-
-        doc.sys.before_del = this.before_del
-        doc.sys.after_del = this.after_del
-
-        doc.sys.before_add = this.before_add
-        doc.sys.after_add = this.after_add
-    }
-
     static before_del(doc: Document, db: IDBCore): boolean { return true }
     static after_del(doc: Document, db: IDBCore): void {}
 
@@ -38,10 +27,11 @@ export interface IDBCore {
         reducer: (result: Result, doc: Document) => void,
         result: Result
     ): Result;
-    get(id: string): Document | false;
-    get_top(code: string): Document | false;
-    code_from_id(id: string): string;
+    get(id: string): Document | undefined;
+    get_top(code: string): Document | undefined;
     add_mut(doc: Document): string | false;
+    code_from_id(id: string): string;
+    doc_class(classname: string): DocClass;
 }
 
 export interface IDBLogger {

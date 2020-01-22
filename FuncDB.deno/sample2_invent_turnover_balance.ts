@@ -2,8 +2,8 @@ import { DBCore } from './core/DBCore.ts'
 
 class ResultRow { // строка результирующей таблицы
     nomen_type = ''
-    person_type = ''
     stock_type = ''
+    person_type = ''
     debit_qty = 0
     debit_amount = 0
     credit_qty = 0
@@ -16,16 +16,16 @@ function calc(db: DBCore) {
         (result, doc) => {
             doc.lines.forEach((line) => {
                 // типы получаем подзапросами к базе (реально берутся из кэша)
-                const stock_type = db.get(doc.stock)?.type ?? ' not found'
                 const nomen_type = db.get(line.nomen)?.type ?? ' not found'
+                const stock_type = db.get(doc.stock)?.type ?? ' not found'
                 const person_type = db.get(doc.person)?.type ?? ' not found'
 
-                const key = stock_type+ nomen_type + person_type
+                const key = nomen_type + stock_type + person_type
                 let row = result[key]
                 if (row === undefined) {
                     row = new ResultRow()
-                    row.stock_type = stock_type
                     row.nomen_type = nomen_type
+                    row.stock_type = stock_type
                     row.person_type = person_type
                     result[key] = row
                 }
@@ -39,23 +39,23 @@ function calc(db: DBCore) {
                 }
             })
         },
-        {} // не можем использовать Map в качестве результата, так как он не сериализуется
+        {} // не можем использовать Map в качестве аккумулятора, так как он не сериализуется
     )
 
     // сортируем результат
     const keys = Object.keys(res)
     keys.sort()
 
-    console.log('\nstock type | nomen type | person type | debet qty | debet amount | credit qty | credit amount | balance amount')
-    console.log('==============================================================================================================')
+    console.log('\nnomen type       | stock type       | person type      | + qty  | debet amount      | - qty  | credit amount     | balance amount    ')
+    console.log('=====================================================================================================================================')
     let cou = 0
     for (const key of keys) {
         const row = res[key]
         cou++; //if (cou > 20) { console.log(' < tail skipped >'); break }
         console.log('' +
-            row.stock_type + ' | ' +
-            row.nomen_type + ' | ' +
-            row.person_type + ' | ' +
+            row.nomen_type.padEnd(16) + ' | ' +
+            row.stock_type.padEnd(16) + ' | ' +
+            row.person_type.padEnd(16) + ' | ' +
             row.debit_qty + ' | ' +            
             row.debit_amount + ' | ' +            
             row.credit_qty + ' | ' +            

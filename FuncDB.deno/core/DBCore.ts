@@ -1,10 +1,10 @@
-import { Document, Result, DBMeta, IDBCore, IDBLogger } from './DBMeta.ts'
+import { Document, Result, DBMeta, DocClass, IDBCore, IDBLogger } from './DBMeta.ts'
 import { DBReaderSync, DBWriter } from './DBIO.ts'
 import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
 
 export class DBCore implements IDBCore {
     private dbpath: string
-    private mut_current = new Map<string, Document>()
+    private mut_current = new Array<Document>()
     private cache_doc = new Map<string, Document>()
     private cache_top = new Map<string, Document>()
     private cache_reduce = new Map<string, Result>()
@@ -24,24 +24,19 @@ export class DBCore implements IDBCore {
 
         let db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
-            if (doc.sys.cache_doc) {
-                this.cache_doc.set(doc.sys.id, doc)
-                db.log.inc_processed()
-            }
-            if (doc.sys.cache_top) {
-                this.cache_top.set(doc.sys.code, doc)
-                db.log.inc_processed1()
-            }
+            this.to_cache(doc, db.log)
         }
         db.log.print()
 
         db = new DBReaderClassify(this.dbpath + DBMeta.data_mut_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
-            this.mut_current.set(doc.sys.id, doc)
+            this.to_cache(doc, db.log)
+            this.mut_current.push(doc)
         }
         db.log.print()
 
         console.log('\ndatabase is initialized !')
+
     }
 
     reduce(
@@ -62,7 +57,7 @@ export class DBCore implements IDBCore {
             db.log.print()
             this.cache_reduce.set(key, JSON.stringify(result))
         }
-        const log = new Log('in-memory', 'reduce-memory')
+        const log = new Log('in-memory/mut_current', 'reduce-memory')
         for (let doc of this.mut_current.values()) {
             log.inc_total()
             reduce1(doc, log)
@@ -88,20 +83,20 @@ export class DBCore implements IDBCore {
         if (cached !== undefined) {
             return cached
         } else {
-            const curr = this.mut_current.get(id)
-            if (curr !== undefined) {
-                return curr
-            } else {
-                const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
-                for (let doc = db.next(); doc; doc = db.next()) {
-                    if (doc.sys.id === id) {
-                        attach_doc_class(doc)
-                        this.cache_doc.set(id, doc)
-                        return doc
-                    }
-                } 
-                return undefined
+            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
+            for (let doc = db.next(); doc; doc = db.next()) {
+                if (doc.sys.id === id) {
+                    this.cache_doc.set(id, doc)
+                    return doc
+                }
+            } 
+            for (const doc of this.mut_current) {
+                if (doc.sys.id === id) {
+                    this.cache_doc.set(id, doc)
+                    return doc
+                }
             }
+            return undefined
         }
     }
 
@@ -110,13 +105,13 @@ export class DBCore implements IDBCore {
         if (cached !== undefined) {
             return cached
         } else {
-            const db = new DBReaderSync(this.dbpath + DBMeta.data_immut)
+            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
                 if (doc.sys.code === code) {
                     this.cache_top.set(code, doc)
                 }
             }
-            for (let doc of this.mut_current.values()) {
+            for (const doc of this.mut_current) {
                 if (doc.sys.code === code) {
                     this.cache_top.set(code, doc)
                 }
@@ -125,18 +120,23 @@ export class DBCore implements IDBCore {
         }
     }
 
-    code_from_id(id: string): string {
-        return id.slice(0, id.indexOf('^'))
-    }
-
     add_mut(doc: Document): string | false {
         const sys = doc.sys
         sys.ts = Date.now()
         sys.id = sys.code + '^' + sys.ts
         attach_doc_class(doc)
-        this.mut_current.set(doc.sys.id, doc)
-        doc.sys.after_add(doc, this)
+        this.to_cache(doc)
+        this.mut_current.push(doc)
+        doc.class.after_add(doc, this)
         return sys.id
+    }
+
+    code_from_id(id: string): string {
+        return id.slice(0, id.indexOf('^'))
+    }
+
+    doc_class(classname: string): DocClass {
+        return get_doc_class(classname)
     }
 
     flush(): void {
@@ -146,6 +146,17 @@ export class DBCore implements IDBCore {
         }
         db.close()
         console.log('\nmutable data written to disk !')
+    }
+
+    private to_cache(doc: Document, log?: Log) {
+        if (doc.class.cache_doc) {
+            this.cache_doc.set(doc.sys.id, doc)
+            log?.inc_processed()
+        }
+        if (doc.class.cache_top) {
+            this.cache_top.set(doc.sys.code, doc)
+            log?.inc_processed1()
+        }
     }
 }
 
@@ -174,7 +185,7 @@ class DBReaderClassify {
 }
 
 function attach_doc_class(doc: Document): void {
-    get_doc_class(doc.sys.class).attach(doc)
+    doc.class = get_doc_class(doc.sys.class)
 }
 
 class Log implements IDBLogger {
