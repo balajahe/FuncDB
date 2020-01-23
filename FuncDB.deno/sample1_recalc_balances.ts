@@ -3,7 +3,6 @@ import { DBCore } from './core/DBCore.ts'
 const db = DBCore.open('./sample_database/')  
 
 // считаем все комбинации по всем документам за 1 проход
-class Row { bal = 0 }
 const bals = db.reduce(
     (_, doc) => doc.sys.slass === 'purch' || doc.sys.class === 'sale' || doc.sys.class === 'transfer',
     (result, doc) => {
@@ -28,21 +27,25 @@ const bals = db.reduce(
             function calc(key, sign) {
                 let row = result[key]
                 if (row === undefined) {
-                    row = new Row()
-                    result[key] = row  
+                    result[key] = 0  
                 }   
-                row.bal += line.qty * sign
+                result[key] += line.qty * sign
             }
         })
     },
     {}, // Map не подходит в качестве аккумулятора, так как он не сериализуется
+    false // не кэшируем результат
 )
 
-// добавляем документы балансов в базу
+// проверяем баланс на актуальность, и если не сходится - добавляем в базу
 let cou = 0
 for (const key of Object.keys(bals)) {
-    db.add_mut({ sys: { class: 'bal_qty', code: key }, value: bals[key].bal })
-    cou ++
+    const newbal = bals[key]
+    const oldbal = db.get_top(key, true)?.value ?? 0
+    if (newbal !== oldbal) {
+        db.add_mut({ sys: { class: 'bal_qty', code: key }, value: newbal })
+        cou ++
+    }
 }
 console.log('\nadded balances = ' + cou)
 db.flush()

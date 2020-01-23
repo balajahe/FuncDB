@@ -1,5 +1,5 @@
 import { Document, Result, DBMeta, DocClass, IDBCore, IDBLogger } from './DBMeta.ts'
-import { DBReaderSync, DBWriter } from './DBIO.ts'
+import { IDBReader, DBReaderSync, DBWriter } from './DBIO.ts'
 import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
 
 export class DBCore implements IDBCore {
@@ -22,13 +22,38 @@ export class DBCore implements IDBCore {
     private init() {
         console.log('database initialization started...')
 
-        let db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'init')
-        for (let doc = db.next(); doc; doc = db.next()) {
-            this.to_cache(doc, db.log)
-        }
-        db.log.print_final()
+        try {
+            Deno.openSync(this.dbpath + DBMeta.cache_doc, 'r').close()
+            Deno.openSync(this.dbpath + DBMeta.cache_top, 'r').close()
+            Deno.openSync(this.dbpath + DBMeta.cache_reduce, 'r').close()
+            
+            let db = new DBReaderClassify(this.dbpath + DBMeta.cache_doc, 'cache')
+            for (let doc = db.next(); doc; doc = db.next()) {
+                this.cache_doc.set(doc.sys.id, doc)
+            }
+            db.log.print_final()
 
-        db = new DBReaderClassify(this.dbpath + DBMeta.data_mut_current, 'init')
+            db = new DBReaderClassify(this.dbpath + DBMeta.cache_top, 'cache')
+            for (let doc = db.next(); doc; doc = db.next()) {
+                this.cache_top.set(doc.sys.code, doc)
+            }
+            db.log.print_final()
+
+            const log = new Log(this.dbpath + DBMeta.cache_reduce, 'cache')
+            const db1 = new DBReaderSync(this.dbpath + DBMeta.cache_reduce, log)
+            for (let red = db1.next(); red; red = db1.next()) {
+                this.cache_reduce.set(red[0], red[1])
+            }
+            log.print_final()
+        } catch(_) {
+            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'init')
+            for (let doc = db.next(); doc; doc = db.next()) {
+                this.to_cache(doc, db.log)
+            }
+            db.log.print_final()
+        }
+
+        const db = new DBReaderClassify(this.dbpath + DBMeta.data_mut_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
             this.to_cache(doc, db.log)
             this.mut_current.push(doc)
@@ -43,21 +68,24 @@ export class DBCore implements IDBCore {
         filter: (result: Result, doc: Document) => boolean, 
         reducer: (result: Result, doc: Document) => void,
         result: Result,
+        to_cache: boolean = true,
     ): Result {
         const key = filter.toString() + ',\n' + reducer.toString() + ',\n' + JSON.stringify(result)
-//        console.log('\nreduce() started...\n' + key)
         console.log('\nreduce() started...')
+        //console.log('\nreduce() started...\n' + key)
         const cached = this.cache_reduce.get(key)
         if (cached !== undefined) {
             console.log('    immutable part of result taken from cache')
-            result = JSON.parse(cached)
+            result = cached
         } else {
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'file')
             for (let doc = db.next(); doc; doc = db.next()) {
                 reduce1(doc, db.log)
             }
             db.log.print_final()
-            this.cache_reduce.set(key, JSON.stringify(result))
+            if (to_cache) {
+                this.cache_reduce.set(key, JSON.parse(JSON.stringify(result)))
+            }
         }
         const log = new Log('in-memory/mut_current', 'memory')
         for (let doc of this.mut_current.values()) {
@@ -80,11 +108,11 @@ export class DBCore implements IDBCore {
         }
     }
 
-    get(id: string): Document | undefined {
+    get(id: string, quick: boolean = false): Document | undefined {
         const cached = this.cache_doc.get(id)
         if (cached !== undefined) {
             return cached
-        } else {
+        } else if (!quick) {
             console.log('\nget() started...')
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
@@ -99,15 +127,15 @@ export class DBCore implements IDBCore {
                     return doc
                 }
             }
-            return undefined
         }
+        return undefined
     }
 
-    get_top(code: string): Document | undefined {
+    get_top(code: string, quick: boolean = false): Document | undefined {
         const cached = this.cache_top.get(code)
         if (cached !== undefined) {
             return cached
-        } else {
+        } else if (!quick) {
             console.log('\nget_top() started...')
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
@@ -121,6 +149,8 @@ export class DBCore implements IDBCore {
                 }
             }
             return this.cache_top.get(code)
+        } else {
+            return undefined
         }
     }
 
@@ -142,23 +172,6 @@ export class DBCore implements IDBCore {
         }
     }
 
-    code_from_id(id: string): string {
-        return id.slice(0, id.indexOf('^'))
-    }
-
-    doc_class(classname: string): DocClass {
-        return get_doc_class(classname)
-    }
-
-    flush(): void {
-        const db = DBWriter.rewrite(this.dbpath + DBMeta.data_mut_current)
-        for (const doc of this.mut_current.values()) {
-            db.add(doc)
-        }
-        db.close()
-        console.log('\nmut_current data written to disk !')
-    }
-
     private to_cache(doc: Document, log?: Log) {
         if (doc.class.cache_doc) {
             this.cache_doc.set(doc.sys.id, doc)
@@ -169,9 +182,47 @@ export class DBCore implements IDBCore {
             log?.inc_processed1()
         }
     }
+
+    doc_class(classname: string): DocClass {
+        return get_doc_class(classname)
+    }
+
+    code_from_id(id: string): string {
+        return id.slice(0, id.indexOf('^'))
+    }
+
+    flush() {
+        let db = DBWriter.rewrite(this.dbpath + DBMeta.data_mut_current)
+        for (const doc of this.mut_current.values()) {
+            db.add(doc)
+        }
+        db.close()
+        console.log('\nmut_current data written to disk !')
+
+        db = DBWriter.rewrite(this.dbpath + DBMeta.cache_doc)
+        for (const doc of this.cache_doc.values()) {
+            db.add(doc)
+        }
+        db.close()
+        console.log('cache_doc written to disk !')
+
+        db = DBWriter.rewrite(this.dbpath + DBMeta.cache_top)
+        for (const doc of this.cache_top.values()) {
+            db.add(doc)
+        }
+        db.close()
+        console.log('cache_top written to disk !')
+
+        db = DBWriter.rewrite(this.dbpath + DBMeta.cache_reduce)
+        for (const entr of this.cache_reduce.entries()) {
+            db.add(entr)
+        }
+        db.close()
+        console.log('cache_reduce written to disk !')
+    }
 }
 
-class DBReaderClassify {
+class DBReaderClassify implements IDBReader {
     private db: DBReaderSync
     readonly log?: Log
 
@@ -233,18 +284,18 @@ class Log implements IDBLogger {
         switch (this.printmode) {
             case 'init':
                 console.log(
-`    ===== source ===== "${this.source}"
+`    ====== scan ====== "${this.source}"
     ${this.total} docs discovered
     ${this.parsed} docs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
     ${this.classified} docs classified \x1b[31m(${this.parsed - this.classified}\x1b[0m DocClass errors)
-    ${this.processed} docs placed in doc-cache
-    ${this.processed1} docs placed in top-cache
+    ${this.processed} docs placed in cache_doc
+    ${this.processed1} docs placed in cache_top
     ${elapsed}s elapsed`
                 )
                 return 8
             case 'file':
                 console.log(
-`    ===== source ===== "${this.source}"
+`    ====== scan ====== "${this.source}"
     ${this.total} docs discovered
     ${this.parsed} docs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
     ${this.classified} docs classified \x1b[31m(${this.parsed - this.classified}\x1b[0m DocClass errors)
@@ -252,9 +303,17 @@ class Log implements IDBLogger {
     ${elapsed}s elapsed`
                 )
                 return 7
+            case 'cache':
+                console.log(
+`    ====== scan ====== "${this.source}"
+    ${this.total} docs discovered
+    ${this.parsed} docs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
+    ${elapsed}s elapsed`
+                )
+                return 5
             case 'memory':
                 console.log(
-`    ===== source ===== "${this.source}"
+`    ====== scan ====== "${this.source}"
     ${this.total} docs discovered
     ${this.processed} docs processed \x1b[31m(${this.processerror}\x1b[0m BL errors)
     ${elapsed}s elapsed`

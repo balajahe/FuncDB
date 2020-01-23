@@ -12,7 +12,7 @@ export interface IDBReader {
 
 export class DBReaderSync implements IDBReader {
     private file: Deno.File
-    private logger?: IDBLogger
+    readonly log?: IDBLogger
     private delim: number = DBMeta.delim
     private buf = new Uint8Array(read_buf_size)
     private p1 = 0
@@ -21,9 +21,9 @@ export class DBReaderSync implements IDBReader {
     private p3 = 0
     private decoder = new TextDecoder()
 
-    constructor(fpath: string, logger?: IDBLogger) {
+    constructor(fpath: string, log?: IDBLogger) {
         this.file = Deno.openSync(fpath, 'r')
-        this.logger = logger
+        this.log = log
     }
 
     next(): Document | false {
@@ -56,13 +56,13 @@ export class DBReaderSync implements IDBReader {
                 return false
             default:
                 const res_s = this.decoder.decode(res_a)
-                this.logger?.inc_total()
+                this.log?.inc_total()
                 try {
                     const res_o = JSON.parse(res_s)
-                    this.logger?.inc_parsed()
+                    this.log?.inc_parsed()
                     return res_o
                 } catch(e) {
-                    console.log(res_s + '\n' + e.stack)
+                    console.log(res_s + '\n' + e + '\n' + e.stack)
                     return this.next()
                 }
         }
@@ -85,13 +85,13 @@ export class DBReaderSync implements IDBReader {
 
 export class DBReaderAsync implements IDBReader {
     private file: Deno.File
-    private logger?: IDBLogger
+    readonly log?: IDBLogger
     private delim: string = String.fromCharCode(DBMeta.delim)
     private reader: BufReader
 
-    constructor(fpath: string, logger?: IDBLogger) {
+    constructor(fpath: string, log?: IDBLogger) {
         this.file = Deno.openSync(fpath, 'r')
-        this.logger = logger
+        this.log = log
         this.reader = new BufReader(this.file, read_buf_size)
     }
 
@@ -103,13 +103,13 @@ export class DBReaderAsync implements IDBReader {
                 return false
             default: 
                 res_s = res_s.slice(0,-1)
-                this.logger?.inc_total()
+                this.log?.inc_total()
                 try {
                     const res_o = JSON.parse(res_s)
-                    this.logger?.inc_parsed()
+                    this.log?.inc_parsed()
                     return res_o
                 } catch(e) {
-                    console.log(res_s + '\n' + e.stack)
+                    console.log(res_s + '\n' + e + '\n' + e.stack)
                     return await this.next()
                 }
         }

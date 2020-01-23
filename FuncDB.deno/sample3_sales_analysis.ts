@@ -23,29 +23,29 @@ lines per document = ${res.linecou / res.doccou}`
 
 const db = DBCore.open('./sample_database/')  
 calc(db)
-const add_ok = db.add_mut(JSON.parse(`
+const add_ok = db.add_mut(
     {
-        "sys": {
-            "class": "sale",
-            "code": "sale.XXX" 
+        sys: {
+            class: 'sale',
+            code: 'sale.XXX'
         },
-        "type": "sale",
-        "date": "2020-01-21",
-        "person": "${db.get_top('person.0').sys.id}",
-        "stock": "${db.get_top('stock.0').sys.id}",
-        "lines": [
+        type: 'sale',
+        date: '2020-01-21',
+        person: db.get_top('person.0').sys.id,
+        stock: db.get_top('stock.0').sys.id,
+        lines: [
             {
-                "nomen": "${db.get_top('nomen.0').sys.id}",
-                "qty": 20,
-                "price": 295.5228788368553
+                nomen: db.get_top('nomen.0').sys.id,
+                qty: 20,
+                price: 295.5228788368553
             }
         ]
     }
-`))
+)
 if (add_ok === true) {
     calc(db)
     db.flush()
 } else {
     console.log('\nError adding sale: ' + add_ok)
-    console.log('Run "sample2_invent_turnover_balance.ts" to adding purch')
+    console.log('Run sample2_invent_turnover_balance.ts to adding purch')
 }

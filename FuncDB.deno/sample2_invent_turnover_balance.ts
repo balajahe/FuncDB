@@ -67,24 +67,24 @@ function calc(db: DBCore) {
 
 const db = DBCore.open('./sample_database/')
 calc(db)
-db.add_mut(JSON.parse(`
+db.add_mut(
     {
-        "sys": {
-            "class": "purch",
-            "code": "purch.2"
+        sys: {
+            class: 'purch',
+            code: 'purch.XXX'
         },
-        "type": "purch",
-        "date": "2020-01-21",
-        "person": "${db.get_top('person.0').sys.id}",
-        "stock": "${db.get_top('stock.0').sys.id}",
-        "lines": [
+        type: 'purch',
+        date: '2020-01-21',
+        person: db.get_top('person.0').sys.id,
+        stock: db.get_top('stock.0').sys.id,
+        lines: [
             {
-                "nomen": "${db.get_top('nomen.0').sys.id}",
-                "qty": 10000,
-                "price": 116.62545127448834
+                nomen: db.get_top('nomen.0').sys.id,
+                qty: 10000,
+                price: 116.62545127448834
             }
        ]
     }
-`))
+)
 calc(db)
 db.flush()
