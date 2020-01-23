@@ -80,15 +80,10 @@ db.add_mut(JSON.parse(`
         "lines": [
             {
                 "nomen": "${db.get_top('nomen.0').sys.id}",
-                "qty": 24,
+                "qty": 10000,
                 "price": 116.62545127448834
-            },
-            {
-                "nomen": "${db.get_top('nomen.1').sys.id}",
-                "qty": 50,
-                "price": 333.62545127448834
             }
-        ]
+       ]
     }
 `))
 calc(db)

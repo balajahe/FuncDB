@@ -2,16 +2,15 @@ import { BufWriter } from 'https://deno.land/std/io/bufio.ts'
 import { DBMeta } from './core/DBMeta.ts'
 
 const dbpath = './sample_database/'
-let compact = false
 
-const immut_scale = 10
-
-let personcou = 300
-let nomencou = 500
-let stockcou = 201
-let doccou = 3333
+let personcou = 5000
+let nomencou = 3000
+let stockcou = 50
+let doccou = 25000
 let maxlinecou = 50
+const mut_scale = 1/10
 
+let compact: boolean
 let db: BufWriter
 let ts: number
 
@@ -20,16 +19,17 @@ try {
 } catch(_) {}
 Deno.mkdirSync(dbpath)
 
-await gen_file(DBMeta.data_mut_current)
-console.log('mutable docs = ' + (personcou + nomencou + stockcou + doccou*3))
-
-personcou *= immut_scale
-nomencou  *= immut_scale
-stockcou *= immut_scale
-doccou *= immut_scale
 compact = true
 await gen_file(DBMeta.data_immut)
-console.log('immutable docs = ' + (personcou + nomencou + stockcou + doccou*3))
+console.log('immutable docs = ' + (personcou + nomencou + stockcou + doccou*4))
+
+compact = false
+personcou = Math.floor(personcou * mut_scale)
+nomencou = Math.floor(nomencou * mut_scale)
+stockcou = Math.floor(stockcou * mut_scale)
+doccou = Math.floor(doccou * mut_scale)
+await gen_file(DBMeta.data_mut_current)
+console.log('mutable docs = ' + (personcou + nomencou + stockcou + doccou*4))
 
 
 async function gen_file(fname: string) {

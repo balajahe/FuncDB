@@ -128,8 +128,8 @@ export class DBWriter {
     static rewrite(fpath: string) { return new DBWriter(fpath, 'w') }
 
     add(doc: Document): void {
-        const doc_s = JSON.stringify(doc, null, '\t')
-//        const doc_s = JSON.stringify(doc)
+        //const doc_s = JSON.stringify(doc, null, '\t')
+        const doc_s = JSON.stringify(doc)
         this.file.writeSync(new TextEncoder().encode('\n' + doc_s + this.delim))
     }
 
