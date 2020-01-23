@@ -1,5 +1,5 @@
 import { Document, Result, DBMeta, DocClass, IDBCore, IDBLogger } from './DBMeta.ts'
-import { IDBReader, DBReaderSync, DBWriter } from './DBIO.ts'
+import { IDBReader, DBReaderSync, DBWriterSync } from './DBIO.ts'
 import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
 
 export class DBCore implements IDBCore {
@@ -68,7 +68,7 @@ export class DBCore implements IDBCore {
         filter: (result: Result, doc: Document) => boolean, 
         reducer: (result: Result, doc: Document) => void,
         result: Result,
-        to_cache: boolean = true,
+        no_cache: boolean = false,
     ): Result {
         const key = filter.toString() + ',\n' + reducer.toString() + ',\n' + JSON.stringify(result)
         console.log('\nreduce() started...')
@@ -83,7 +83,7 @@ export class DBCore implements IDBCore {
                 reduce1(doc, db.log)
             }
             db.log.print_final()
-            if (to_cache) {
+            if (!no_cache) {
                 this.cache_reduce.set(key, JSON.parse(JSON.stringify(result)))
             }
         }
@@ -108,11 +108,11 @@ export class DBCore implements IDBCore {
         }
     }
 
-    get(id: string, quick: boolean = false): Document | undefined {
+    get(id: string, no_scan: boolean = false): Document | undefined {
         const cached = this.cache_doc.get(id)
         if (cached !== undefined) {
             return cached
-        } else if (!quick) {
+        } else if (!no_scan) {
             console.log('\nget() started...')
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
@@ -131,11 +131,11 @@ export class DBCore implements IDBCore {
         return undefined
     }
 
-    get_top(code: string, quick: boolean = false): Document | undefined {
+    get_top(code: string, no_scan: boolean = false): Document | undefined {
         const cached = this.cache_top.get(code)
         if (cached !== undefined) {
             return cached
-        } else if (!quick) {
+        } else if (!no_scan) {
             console.log('\nget_top() started...')
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
@@ -173,11 +173,11 @@ export class DBCore implements IDBCore {
     }
 
     private to_cache(doc: Document, log?: Log) {
-        if (doc.class.cache_doc) {
+        if (doc.class.cache_doc && !this.cache_doc.has(doc.sys.id)) {
             this.cache_doc.set(doc.sys.id, doc)
             log?.inc_processed()
         }
-        if (doc.class.cache_top) {
+        if (doc.class.cache_top && !this.cache_top.has(doc.sys.code)) {
             this.cache_top.set(doc.sys.code, doc)
             log?.inc_processed1()
         }
@@ -191,34 +191,36 @@ export class DBCore implements IDBCore {
         return id.slice(0, id.indexOf('^'))
     }
 
-    flush() {
-        let db = DBWriter.rewrite(this.dbpath + DBMeta.data_mut_current)
+    flush(no_cache: boolean = false) {
+        let db = DBWriterSync.rewrite(this.dbpath + DBMeta.data_mut_current)
         for (const doc of this.mut_current.values()) {
             db.add(doc)
         }
         db.close()
         console.log('\nmut_current data written to disk !')
 
-        db = DBWriter.rewrite(this.dbpath + DBMeta.cache_doc)
-        for (const doc of this.cache_doc.values()) {
-            db.add(doc)
-        }
-        db.close()
-        console.log('cache_doc written to disk !')
+        if (!no_cache) {
+            db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_doc)
+            for (const doc of this.cache_doc.values()) {
+                db.add(doc)
+            }
+            db.close()
+            console.log('cache_doc written to disk !')
 
-        db = DBWriter.rewrite(this.dbpath + DBMeta.cache_top)
-        for (const doc of this.cache_top.values()) {
-            db.add(doc)
-        }
-        db.close()
-        console.log('cache_top written to disk !')
+            db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_top)
+            for (const doc of this.cache_top.values()) {
+                db.add(doc)
+            }
+            db.close()
+            console.log('cache_top written to disk !')
 
-        db = DBWriter.rewrite(this.dbpath + DBMeta.cache_reduce)
-        for (const entr of this.cache_reduce.entries()) {
-            db.add(entr)
+            db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_reduce)
+            for (const entr of this.cache_reduce.entries()) {
+                db.add(entr)
+            }
+            db.close()
+            console.log('cache_reduce written to disk !')
         }
-        db.close()
-        console.log('cache_reduce written to disk !')
     }
 }
 

@@ -6,9 +6,9 @@ const dbpath = './sample_database/'
 let personcou = 5000
 let nomencou = 3000
 let stockcou = 50
-let doccou = 25000
+let doccou = 250000
 let maxlinecou = 50
-const mut_scale = 1/10
+const mut_scale = 1/20
 
 let compact: boolean
 let db: BufWriter

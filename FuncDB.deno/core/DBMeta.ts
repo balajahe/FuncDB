@@ -26,14 +26,14 @@ export interface IDBCore {
         filter: (result: Result, doc: Document) => boolean, 
         reducer: (result: Result, doc: Document) => void,
         result: Result,
-        to_cache?: boolean,
+        no_cache?: boolean,
     ): Result;
-    get(id: string, quick?: boolean): Document | undefined
-    get_top(code: string, quick?: boolean): Document | undefined
+    get(id: string, no_scan?: boolean): Document | undefined
+    get_top(code: string, no_scan?: boolean): Document | undefined
     add_mut(doc: Document): true | string
     doc_class(classname: string): DocClass
     code_from_id(id: string): string
-    flush(): void
+    flush(no_cache?: boolean): void
 }
 
 export interface IDBLogger {

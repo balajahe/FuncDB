@@ -44,8 +44,8 @@ const add_ok = db.add_mut(
 )
 if (add_ok === true) {
     calc(db)
-    db.flush()
 } else {
     console.log('\nError adding sale: ' + add_ok)
-    console.log('Run sample2_invent_turnover_balance.ts to adding purch')
+    console.log('Run sample3_invent_turnover_balance.ts to adding purch')
 }
+db.flush()

@@ -11,7 +11,7 @@ export default class purch extends DocClass {
                 { bal_key: bal_key, bal: 0 },
             )
             */
-            const bal_old = db.get_top(bal_key)?.value ?? 0
+            const bal_old = db.get_top(bal_key, true)?.value ?? 0 
             const bal_new = {sys: {class: "bal_qty", code: bal_key}, value: bal_old + line.qty}
             db.add_mut(bal_new)
         })

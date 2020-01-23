@@ -1,5 +1,4 @@
 import { DBCore } from './core/DBCore.ts'
-
 const db = DBCore.open('./sample_database/')  
 
 // считаем все комбинации по всем документам за 1 проход
@@ -34,10 +33,10 @@ const bals = db.reduce(
         })
     },
     {}, // Map не подходит в качестве аккумулятора, так как он не сериализуется
-    false // не кэшируем результат
+    true // не кэшируем результат, так как бессмысленно, и он большой
 )
 
-// проверяем баланс на актуальность, и если не сходится - добавляем в базу
+// проверяем баланс на актуальность, и если не сходится - добавляем правильный в базу
 let cou = 0
 for (const key of Object.keys(bals)) {
     const newbal = bals[key]
@@ -47,5 +46,5 @@ for (const key of Object.keys(bals)) {
         cou ++
     }
 }
-console.log('\nadded balances = ' + cou)
+console.log('\nadded balances: ' + cou)
 db.flush()

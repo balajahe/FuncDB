@@ -1,9 +1,10 @@
 import { DocClass } from '../core/DBMeta.ts' 
 
 import ref from './ref.ts'
+import balance from './balance.ts'
 import purch from './purch.ts'
 import sale from './sale.ts'
-import balance from './balance.ts'
+import transfer from './transfer.ts'
 
 export function get_doc_class(classname: string) { // : DocClass { непонятно как указать что возвращается тип
     switch (classname) {
@@ -12,7 +13,7 @@ export function get_doc_class(classname: string) { // : DocClass { непоня�
         case 'bal_amount': return balance
         case 'purch': return purch
         case 'sale': return sale
-        case 'transfer': return DocClass
+        case 'transfer': return transfer
         default: throw `Error: doc-class "${classname}" is not registered !`
     }
 }

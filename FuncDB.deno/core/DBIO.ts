@@ -116,7 +116,7 @@ export class DBReaderAsync implements IDBReader {
     } 
 }
 
-export class DBWriter {
+export class DBWriterSync {
     private file: Deno.File
     private delim: string = String.fromCharCode(DBMeta.delim)
 
@@ -124,12 +124,13 @@ export class DBWriter {
         this.file = Deno.openSync(fpath, fmode)
     }
 
-    static append(fpath: string) { return new DBWriter(fpath, 'a') }
-    static rewrite(fpath: string) { return new DBWriter(fpath, 'w') }
+    static append(fpath: string) { return new DBWriterSync(fpath, 'a') }
+    static rewrite(fpath: string) { return new DBWriterSync(fpath, 'w') }
 
+    // на больших объектах - обрезает буфер, надо переделать на буфер-райтер (синхронного нет в Deno)
     add(doc: Document): void {
-        //const doc_s = JSON.stringify(doc, null, '\t')
         const doc_s = JSON.stringify(doc)
+        //const doc_s = JSON.stringify(doc, null, '\t')
         this.file.writeSync(new TextEncoder().encode('\n' + doc_s + this.delim))
     }
 
