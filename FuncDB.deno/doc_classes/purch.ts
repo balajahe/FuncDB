@@ -6,9 +6,9 @@ export default class purch extends DocClass {
             const bal_key = db.code_from_id(line.nomen) + '|' + db.code_from_id(doc.stock)
             /*
             const bal_old = db.reduce(
-                (res, doc) => doc.sys.class === 'bal_qty' && doc.sys.code === res.bal,
+                (res, doc) => doc.sys.class === 'bal_qty' && doc.sys.code === res.bal_key,
                 (res, doc) => { res.bal += doc.value },
-                { key: bal_key, bal: 0 },
+                { bal_key: bal_key, bal: 0 },
             )
             */
             const bal_old = db.get_top(bal_key)?.value ?? 0

@@ -20,22 +20,22 @@ export class DBCore implements IDBCore {
     }
    
     private init() {
-        console.log('\ndatabase initialization started...')
+        console.log('database initialization started...')
 
         let db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
             this.to_cache(doc, db.log)
         }
-        db.log.print()
+        db.log.print_final()
 
         db = new DBReaderClassify(this.dbpath + DBMeta.data_mut_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
             this.to_cache(doc, db.log)
             this.mut_current.push(doc)
         }
-        db.log.print()
+        db.log.print_final()
 
-        console.log('\ndatabase is initialized !')
+        console.log('database is initialized !')
 
     }
 
@@ -49,22 +49,22 @@ export class DBCore implements IDBCore {
         console.log('\nreduce() started...')
         const cached = this.cache_reduce.get(key)
         if (cached !== undefined) {
-            console.log(`\n                    immutable part of result taken from cache`)
+            console.log('    immutable part of result taken from cache')
             result = JSON.parse(cached)
         } else {
-            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'reduce-file')
+            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'file')
             for (let doc = db.next(); doc; doc = db.next()) {
                 reduce1(doc, db.log)
             }
-            db.log.print()
+            db.log.print_final()
             this.cache_reduce.set(key, JSON.stringify(result))
         }
-        const log = new Log('in-memory/mut_current', 'reduce-memory')
+        const log = new Log('in-memory/mut_current', 'memory')
         for (let doc of this.mut_current.values()) {
             log.inc_total()
             reduce1(doc, log)
         }
-        log.print()
+        log.print_final()
         return result
 
         function reduce1(doc: Document, log?: Log) {
@@ -74,9 +74,8 @@ export class DBCore implements IDBCore {
                     log?.inc_processed()
                 }
             } catch(e) {
-                console.log(JSON.stringify(doc, null, '\t') + '\n' + e.stack)
-                Deno.exit()
-                //log?.inc_processerror()
+                console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
+                log?.inc_processerror()
             }
         }
     }
@@ -86,6 +85,7 @@ export class DBCore implements IDBCore {
         if (cached !== undefined) {
             return cached
         } else {
+            console.log('\nget() started...')
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
                 if (doc.sys.id === id) {
@@ -104,10 +104,11 @@ export class DBCore implements IDBCore {
     }
 
     get_top(code: string): Document | undefined {
-        let cached = this.cache_top.get(code)
+        const cached = this.cache_top.get(code)
         if (cached !== undefined) {
             return cached
         } else {
+            console.log('\nget_top() started...')
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
                 if (doc.sys.code === code) {
@@ -129,13 +130,14 @@ export class DBCore implements IDBCore {
             attach_doc_class(doc)
             const ok = doc.class.before_add(doc, this)
             if (ok === true) {
-                this.to_cache(doc)
                 this.mut_current.push(doc)
+                this.to_cache(doc)
                 doc.class.after_add(doc, this)
             }
             return ok
         } catch(e) {
-            console.log(e)
+            console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
+            console.log('process is aborted !')
             Deno.exit()
         }
     }
@@ -187,9 +189,8 @@ class DBReaderClassify {
             this.log?.print_progress()
             return doc
         } catch(e) {
-            console.log(JSON.stringify(doc, null, '\t') + '\n' + e)
-            Deno.exit()
-            //return this.next()
+            console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
+            return this.next()
         }
     }
 }
@@ -222,43 +223,43 @@ class Log implements IDBLogger {
     inc_processerror() { this.processerror++ }
     print_progress() {
         if (this.cou === this.printcou) {
-            const lines = this.print()
+            const lines = this.print_final()
+            if (lines > 0) console.log('\x1b[' + lines + 'A')
             this.cou = 0
-            console.log('\x1b[' + lines + 'A') 
         }
     }
-    print(): number {
+    print_final(): number {
         const elapsed = (Date.now() - this.start) / 1000
         switch (this.printmode) {
             case 'init':
-                console.log(`
-                    source: "${this.source}"
-                    ${this.total} docs discovered
-                    ${this.parsed} docs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
-                    ${this.classified} docs classified \x1b[31m(${this.parsed - this.classified}\x1b[0m DocClass errors)
-                    ${this.processed} docs placed in doc-cache
-                    ${this.processed1} docs placed in top-cache
-                    ${elapsed}s elapsed`
-                )
-                return 9
-            case 'reduce-file':
-                console.log(`
-                    source: "${this.source}"
-                    ${this.total} docs discovered
-                    ${this.parsed} docs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
-                    ${this.classified} docs classified \x1b[31m(${this.parsed - this.classified}\x1b[0m DocClass errors)
-                    ${this.processed} docs processed \x1b[31m(${this.processerror}\x1b[0m BL errors)
-                    ${elapsed}s elapsed`
+                console.log(
+`    ===== source ===== "${this.source}"
+    ${this.total} docs discovered
+    ${this.parsed} docs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
+    ${this.classified} docs classified \x1b[31m(${this.parsed - this.classified}\x1b[0m DocClass errors)
+    ${this.processed} docs placed in doc-cache
+    ${this.processed1} docs placed in top-cache
+    ${elapsed}s elapsed`
                 )
                 return 8
-            case 'reduce-memory':
-                console.log(`
-                    source: "${this.source}"
-                    ${this.total} docs discovered
-                    ${this.processed} docs processed \x1b[31m(${this.processerror}\x1b[0m BL errors)
-                    ${elapsed}s elapsed`
+            case 'file':
+                console.log(
+`    ===== source ===== "${this.source}"
+    ${this.total} docs discovered
+    ${this.parsed} docs parsed \x1b[31m(${this.total - this.parsed}\x1b[0m JSON errors)
+    ${this.classified} docs classified \x1b[31m(${this.parsed - this.classified}\x1b[0m DocClass errors)
+    ${this.processed} docs processed \x1b[31m(${this.processerror}\x1b[0m BL errors)
+    ${elapsed}s elapsed`
                 )
-                return 6
+                return 7
+            case 'memory':
+                console.log(
+`    ===== source ===== "${this.source}"
+    ${this.total} docs discovered
+    ${this.processed} docs processed \x1b[31m(${this.processerror}\x1b[0m BL errors)
+    ${elapsed}s elapsed`
+                )
+                return 5
         }    
     }
 }

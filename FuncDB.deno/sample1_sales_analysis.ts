@@ -13,10 +13,11 @@ function calc(db: DBCore) {
         { amount: 0, doccou: 0, linecou: 0 }, // инициализируем аккумулятор
     )
     console.log(`
-        =======================================
-        amount total = ${res.amount}
-        amount per document = ${res.amount / res.doccou}
-        lines per document = ${res.linecou / res.doccou}`
+=======================================
+sale documents count = ${res.doccou}
+amount total = ${res.amount}
+amount per document = ${res.amount / res.doccou}
+lines per document = ${res.linecou / res.doccou}`
     )
 }
 
@@ -35,7 +36,7 @@ const add_ok = db.add_mut(JSON.parse(`
         "lines": [
             {
                 "nomen": "${db.get_top('nomen.0').sys.id}",
-                "qty": 25,
+                "qty": 20,
                 "price": 295.5228788368553
             }
         ]
@@ -45,5 +46,6 @@ if (add_ok === true) {
     calc(db)
     db.flush()
 } else {
-    console.log('\nERROR: ' + add_ok)
+    console.log('\nError adding sale: ' + add_ok)
+    console.log('Run "sample2_invent_turnover_balance.ts" to adding purch')
 }

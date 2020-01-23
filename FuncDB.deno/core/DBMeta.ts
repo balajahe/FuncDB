@@ -41,4 +41,5 @@ export interface IDBLogger {
     inc_processed() : void
     inc_processed1() : void
     inc_processerror() : void
+    print_progress(): void
 }

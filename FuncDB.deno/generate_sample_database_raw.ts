@@ -4,14 +4,13 @@ import { DBMeta } from './core/DBMeta.ts'
 const dbpath = './sample_database/'
 let compact = false
 
-const mut_scale = 1
-const immut_scale = 24.4
+const immut_scale = 10
 
-let personcou = 30
-let nomencou = 40
-let stockcou = 30
-let doccou = 1000
-let maxlinecou = 100
+let personcou = 300
+let nomencou = 500
+let stockcou = 201
+let doccou = 3333
+let maxlinecou = 50
 
 let db: BufWriter
 let ts: number
@@ -21,11 +20,8 @@ try {
 } catch(_) {}
 Deno.mkdirSync(dbpath)
 
-personcou *= mut_scale
-nomencou  *= mut_scale
-stockcou *= mut_scale
-doccou *= mut_scale
 await gen_file(DBMeta.data_mut_current)
+console.log('mutable docs = ' + (personcou + nomencou + stockcou + doccou*3))
 
 personcou *= immut_scale
 nomencou  *= immut_scale
@@ -33,6 +29,7 @@ stockcou *= immut_scale
 doccou *= immut_scale
 compact = true
 await gen_file(DBMeta.data_immut)
+console.log('immutable docs = ' + (personcou + nomencou + stockcou + doccou*3))
 
 
 async function gen_file(fname: string) {
