@@ -196,13 +196,13 @@ export class DBCore implements IDBCore {
         return id.slice(0, id.indexOf('^'))
     }
 
-    flush(no_cache: boolean = false) {
+    flush(no_cache: boolean = false, compact: boolean = true) {
         console.log('\nflushing database to disk...')
 
         let cou = 0 
         let db = DBWriterSync.rewrite(this.dbpath + DBMeta.data_mut_current)
         for (const doc of this.mut_current.values()) {
-            db.add(doc)
+            db.add(doc, compact)
             cou++
         }
         db.close()
@@ -212,7 +212,7 @@ export class DBCore implements IDBCore {
             cou = 0
             db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_doc)
             for (const doc of this.cache_doc.values()) {
-                db.add(doc)
+                db.add(doc, compact)
                 cou++
             }
             db.close()
@@ -221,7 +221,7 @@ export class DBCore implements IDBCore {
             cou = 0
             db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_top)
             for (const doc of this.cache_top.values()) {
-                db.add(doc)
+                db.add(doc, compact)
                 cou++
             }
             db.close()
@@ -230,7 +230,7 @@ export class DBCore implements IDBCore {
             cou = 0
             db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_reduce)
             for (const entr of this.cache_reduce.entries()) {
-                db.add(entr)
+                db.add(entr, compact)
                 cou++
             }
             db.close()

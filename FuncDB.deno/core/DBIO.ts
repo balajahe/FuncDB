@@ -127,14 +127,18 @@ export class DBWriterSync {
     static append(fpath: string) { return new DBWriterSync(fpath, 'a') }
     static rewrite(fpath: string) { return new DBWriterSync(fpath, 'w') }
 
-    // на больших объектах - обрезает буфер, надо переделать на буфер-райтер (синхронного нет в Deno)
-    add(doc: Document): void {
-        const doc_s = JSON.stringify(doc)
-        //const doc_s = JSON.stringify(doc, null, '\t')
+    // на больших объектах - обрезает строку, надо переделать на буфер-райтер (синхронного нет в Deno)
+    add(doc: Document, compact: boolean = true) {
+        let doc_s: string
+        if (compact) {
+            doc_s = JSON.stringify(doc)
+        } else {
+            doc_s = JSON.stringify(doc, null, '\t')
+        }
         this.file.writeSync(new TextEncoder().encode('\n' + doc_s + this.delim))
     }
 
-    close(): void {
+    close() {
         this.file.close()
     }
 }

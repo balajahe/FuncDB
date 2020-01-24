@@ -5,10 +5,15 @@ export default class sale extends DocMeta {
         for (let line of doc.lines) {
             const bal_key = 'bal' + '|' + db.key_from_id(line.nomen) + '|' + db.key_from_id(doc.stock1)
             // второй параметр get() - запрет скана, ищем только в топ-кэше
-            const bal_old = db.get_top(bal_key, true)?.val ?? 0
-            if (bal_old < line.qty) return [false, `"${bal_key}": requested ${line.qty} but balance is only ${bal_old}`]
+            const bal_doc = db.get_top(bal_key, true)
+            const bal = bal_doc?.val ?? 0
+            if (bal < line.qty) {
+                return [false, `"${bal_key}": requested ${line.qty} but balance is only ${bal}`]
+            } else {
+                line.from = bal_doc.id
+                return [true,]
+            }
         }
-        return [true,]
     }
 
     static after_add(doc: Document, db: IDBCore): void {

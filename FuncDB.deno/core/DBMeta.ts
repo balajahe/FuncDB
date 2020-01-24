@@ -33,7 +33,7 @@ export interface IDBCore {
     add_mut(doc: Document): [boolean, string?]
     doc_meta(type: string): DocMeta
     key_from_id(id: string): string
-    flush(no_cache?: boolean): void
+    flush(no_cache?: boolean, compact?: boolean): void
 }
 
 export interface IDBLogger {
