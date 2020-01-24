@@ -52,12 +52,10 @@ async function gen_persons() {
     for (let i = 0; i < personcou; i++) {
         let doc = `
             {
-                "sys": {
-                    "class": "ref",
-                    "code": "person.${i}",
-                    "id": "person.${i}^${ts}"
-                },
-                "type": "person.${arand(person_types)}",
+                "type": "ref",
+                "key": "person.${i}",
+                "id": "person.${i}^${ts}",
+                "erp_type": "person.${arand(person_types)}",
                 "name": "person ${i}" 
             }`
         await write(doc)
@@ -70,12 +68,10 @@ async function gen_nomens() {
     for (let i = 0; i < nomencou; i++) {
         let doc = `
             {
-                "sys": {
-                    "class": "ref",
-                    "code": "nomen.${i}",
-                    "id": "nomen.${i}^${ts}"
-                },
-                "type": "nomen.${arand(nomen_types)}",
+                "type": "ref",
+                "key": "nomen.${i}",
+                "id": "nomen.${i}^${ts}",
+                "erp_type": "nomen.${arand(nomen_types)}",
                 "name": "nomen ${i}"
             }`
         await write(doc)
@@ -88,12 +84,10 @@ async function gen_stocks() {
     for (let i = 0; i < stockcou; i++) {
         let doc = `
             {
-                "sys": {
-                    "class": "ref",
-                    "code": "stock.${i}",
-                    "id": "stock.${i}^${ts}" 
-                },
-                "type": "stock.${arand(stock_types)}",
+                "type": "ref",
+                "key": "stock.${i}",
+                "id": "stock.${i}^${ts}" ,
+                "erp_type": "stock.${arand(stock_types)}",
                 "name": "stock ${i}"
             }`
         await write(doc)
@@ -111,12 +105,10 @@ async function gen_docs() {
             const stock2 = 'stock.' + irand(0, stockcou-1) + '^' + ts
             let docclass = ''
             let stocks = ''
-            if (!doctype.startsWith('transfer')) {
-                docclass = doctype
+            if (doctype !=='transfer') {
                 stocks = `
                     "stock": "${stock1}"`
             } else {
-                docclass = 'transfer'
                 stocks = `
                     "stock1": "${stock1}",
                     "stock2": "${stock2}"`
@@ -136,12 +128,9 @@ async function gen_docs() {
                     ]`
             let doc = `
                 {
-                    "sys": {
-                        "class": "${docclass}",
-                        "code": "${doctype}.${i}",
-                        "id": "${doctype}.${i}^${ts}"  
-                    },
                     "type": "${doctype}",
+                    "key": "${doctype}.${i}",
+                    "id": "${doctype}.${i}^${ts}",
                     "date": "${date}",
                     "person": "${person}",${stocks},
                     "lines": ${lines}

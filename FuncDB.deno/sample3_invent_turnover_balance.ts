@@ -16,9 +16,9 @@ const res = db.reduce(
     (result, doc) => {
         doc.lines.forEach((line) => {
             // типы получаем подзапросами к базе (реально берутся из кэша)
-            const nomen_type = db.get(line.nomen)?.type ?? ' not found'
-            const stock_type = db.get(doc.stock)?.type ?? ' not found'
-            const person_type = db.get(doc.person)?.type ?? ' not found'
+            const nomen_type = db.get(line.nomen)?.erp_type ?? ' not found'
+            const stock_type = db.get(doc.stock)?.erp_type ?? ' not found'
+            const person_type = db.get(doc.person)?.erp_type ?? ' not found'
 
             const key = nomen_type + stock_type + person_type
             let row = result[key]
@@ -46,8 +46,8 @@ const res = db.reduce(
 const keys = Object.keys(res)
 keys.sort()
 
-console.log('\nnomen type       | stock type       | person type      | + qty  | debet amount      | - qty  | credit amount     | balance amount    ')
-console.log('=====================================================================================================================================')
+console.log('\nnomen type       | stock type       | person type      | + qty    | debet amount      | - qty   | credit amount     | balance amount    ')
+console.log('=======================================================================================================================================')
 let cou = 0
 for (const key of keys) {
     const row = res[key]
@@ -66,17 +66,14 @@ for (const key of keys) {
 
 db.add_mut(
     {
-        sys: {
-            class: 'purch',
-            code: 'purch.XXX'
-        },
         type: 'purch',
+        key: 'purch.XXX',
         date: '2020-01-21',
-        person: db.get_top('person.0').sys.id,
-        stock: db.get_top('stock.0').sys.id,
+        person: db.get_top('person.0').id,
+        stock: db.get_top('stock.0').id,
         lines: [
             {
-                nomen: db.get_top('nomen.0').sys.id,
+                nomen: db.get_top('nomen.0').id,
                 qty: 10000,
                 price: 116.62545127448834
             }

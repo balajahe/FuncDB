@@ -3,10 +3,10 @@ const db = DBCore.open('./sample_database/')
 
 // считаем все комбинации по всем документам за 1 проход
 const bals = db.reduce(
-    (_, doc) => doc.sys.class === 'purch' || doc.sys.class === 'sale' || doc.sys.class === 'transfer',
+    (_, doc) => doc.type === 'purch' || doc.type === 'sale' || doc.type === 'transfer',
     (result, doc) => {
         doc.lines.forEach((line) => {
-            switch (doc.sys.class) {
+            switch (doc.type) {
                 case 'purch':
                     calc(key(line.nomen, doc.stock), +1)
                     break
@@ -20,7 +20,7 @@ const bals = db.reduce(
             }
 
             function key(id1, id2) { 
-                return db.code_from_id(id1) + '|' +  db.code_from_id(id2)
+                return 'bal' + '|' + db.key_from_id(id1) + '|' +  db.key_from_id(id2)
             }
             
             function calc(key, sign) {
@@ -39,10 +39,10 @@ const bals = db.reduce(
 // проверяем баланс на актуальность, и если не сходится - добавляем правильный в базу
 let cou = 0
 for (const key of Object.keys(bals)) {
-    const newbal = bals[key]
-    const oldbal = db.get_top(key, true)?.value ?? 0
-    if (newbal !== oldbal) {
-        db.add_mut({ sys: { class: 'bal_qty', code: key }, value: newbal })
+    const new_bal = bals[key]
+    const old_bal = db.get_top(key, true)?.val ?? 0
+    if (new_bal !== old_bal) {
+        db.add_mut({ type: 'bal', key: key, val: new_bal })
         cou ++
     }
 }

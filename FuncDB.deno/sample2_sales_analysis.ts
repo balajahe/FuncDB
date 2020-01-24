@@ -21,17 +21,14 @@ console.log('\n=======================================' +
 
 const [ok, msg] = db.add_mut(
     {
-        sys: {
-            class: 'sale',
-            code: 'sale.XXX'
-        },
         type: 'sale',
+        key: 'sale.XXX',
         date: '2020-01-21',
-        person: db.get_top('person.0').sys.id,
-        stock: db.get_top('stock.0').sys.id,
+        person: db.get_top('person.0').id,
+        stock: db.get_top('stock.0').id,
         lines: [
             {
-                nomen: db.get_top('nomen.0').sys.id,
+                nomen: db.get_top('nomen.0').id,
                 qty: 20,
                 price: 295.5228788368553
             }

@@ -48,12 +48,10 @@ function gen_persons() {
     for (let i = 0; i < personcou; i++) {
         let doc = 
             {
-                sys: {
-                    class: 'ref',
-                    code: 'person.' + i,
-                    id: 'person.' + i + '^' + ts
-                },
-                type: 'person.' + arand(person_types),
+                type: 'ref',
+                key: 'person.' + i,
+                id: 'person.' + i + '^' + ts,
+                erp_type: 'person.' + arand(person_types),
                 name: 'person ' + i 
             }
         db.add_mut(doc)
@@ -66,12 +64,10 @@ async function gen_nomens() {
     for (let i = 0; i < nomencou; i++) {
         let doc = 
             {
-                sys: {
-                    class: 'ref',
-                    code: 'nomen.' + i,
-                    id: 'nomen.' + i + '^' + ts
-                },
-                type: 'nomen.' + arand(nomen_types),
+                type: 'ref',
+                key: 'nomen.' + i,
+                id: 'nomen.' + i + '^' + ts,
+                erp_type: 'nomen.' + arand(nomen_types),
                 name: 'nomen ' + i 
             }
         db.add_mut(doc)
@@ -84,12 +80,10 @@ async function gen_stocks() {
     for (let i = 0; i < stockcou; i++) {
         let doc =
             {
-                sys: {
-                    class: 'ref',
-                    code: 'stock.' + i,
-                    id: 'stock.' + i + '^' + ts
-                },
-                type: 'stock.' + arand(stock_types),
+                type: 'ref',
+                key: 'stock.' + i,
+                id: 'stock.' + i + '^' + ts,
+                erp_type: 'stock.' + arand(stock_types),
                 name: 'stock ' + i 
             }
         db.add_mut(doc)
@@ -107,12 +101,9 @@ async function gen_docs() {
         while (i < doccou) {
             let doc: any =
                 {
-                    sys: {
-                        class: doctype,
-                        code: doctype + '.' + i,
-                        id: doctype + '.' + i + '^' + ts  
-                    },
                     type: doctype,
+                    key: doctype + '.' + i,
+                    id: doctype + '.' + i + '^' + ts,
                     date: date,
                     person: 'person.' + irand(0, personcou-1) + '^' + ts
                 }

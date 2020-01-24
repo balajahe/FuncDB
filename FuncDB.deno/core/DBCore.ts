@@ -1,6 +1,6 @@
-import { Document, Result, DBMeta, DocClass, IDBCore, IDBLogger } from './DBMeta.ts'
+import { Document, Result, DBMeta, DocMeta, IDBCore, IDBLogger } from './DBMeta.ts'
 import { IDBReader, DBReaderSync, DBWriterSync } from './DBIO.ts'
-import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
+import { get_doc_meta } from '../doc_meta/.get_doc_meta.ts'
 
 export class DBCore implements IDBCore {
     private dbpath: string
@@ -32,19 +32,19 @@ export class DBCore implements IDBCore {
             }
         }
         if (!no_cache) {
-            let db = new DBReaderClassify(this.dbpath + DBMeta.cache_doc, 'cache')
+            let db = new DBReaderMeta(this.dbpath + DBMeta.cache_doc, 'cache')
             for (let doc = db.next(); doc; doc = db.next()) {
-                this.cache_doc.set(doc.sys.id, doc)
+                this.cache_doc.set(doc.id, doc)
             }
             db.log.print_final()
 
-            db = new DBReaderClassify(this.dbpath + DBMeta.cache_top, 'cache')
+            db = new DBReaderMeta(this.dbpath + DBMeta.cache_top, 'cache')
             for (let doc = db.next(); doc; doc = db.next()) {
-                this.cache_top.set(doc.sys.code, doc)
+                this.cache_top.set(doc.key, doc)
             }
             db.log.print_final()
 
-            const log = new Log(this.dbpath + DBMeta.cache_reduce, 'cache')
+            const log = new Log(this.dbpath + DBMeta.cache_reduce, 'cache_reduce')
             const db1 = new DBReaderSync(this.dbpath + DBMeta.cache_reduce, log)
             for (let red = db1.next(); red; red = db1.next()) {
                 this.cache_reduce.set(red[0], red[1])
@@ -52,14 +52,14 @@ export class DBCore implements IDBCore {
             log.print_final()
 
         } else {
-            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'init')
+            const db = new DBReaderMeta(this.dbpath + DBMeta.data_immut, 'init')
             for (let doc = db.next(); doc; doc = db.next()) {
                 this.to_cache(doc, db.log)
             }
             db.log.print_final()
         }
 
-        const db = new DBReaderClassify(this.dbpath + DBMeta.data_mut_current, 'init')
+        const db = new DBReaderMeta(this.dbpath + DBMeta.data_mut_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
             this.to_cache(doc, db.log)
             this.mut_current.push(doc)
@@ -83,7 +83,7 @@ export class DBCore implements IDBCore {
             console.log('    immutable part of result taken from cache')
             result = JSON.parse(cached)
         } else {
-            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'file')
+            const db = new DBReaderMeta(this.dbpath + DBMeta.data_immut, 'file')
             for (let doc = db.next(); doc; doc = db.next()) {
                 reduce1(doc, db.log)
             }
@@ -118,16 +118,16 @@ export class DBCore implements IDBCore {
         if (cached !== undefined) {
             return cached
         } else if (!no_scan) {
-            console.log('\nget(' + id + ') started...')
-            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
+            console.log('\nget("' + id + '") started...')
+            const db = new DBReaderMeta(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
-                if (doc.sys.id === id) {
+                if (doc.id === id) {
                     this.cache_doc.set(id, doc)
                     return doc
                 }
             } 
             for (const doc of this.mut_current) {
-                if (doc.sys.id === id) {
+                if (doc.id === id) {
                     this.cache_doc.set(id, doc)
                     return doc
                 }
@@ -136,24 +136,24 @@ export class DBCore implements IDBCore {
         return undefined
     }
 
-    get_top(code: string, no_scan: boolean = false): Document | undefined {
-        const cached = this.cache_top.get(code)
+    get_top(key: string, no_scan: boolean = false): Document | undefined {
+        const cached = this.cache_top.get(key)
         if (cached !== undefined) {
             return cached
         } else if (!no_scan) {
-            console.log('\nget_top(' + code + ') started...')
-            const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut)
+            console.log('\nget_top("' + key + '") started...')
+            const db = new DBReaderMeta(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
-                if (doc.sys.code === code) {
-                    this.cache_top.set(code, doc)
+                if (doc.key === key) {
+                    this.cache_top.set(key, doc)
                 }
             }
             for (const doc of this.mut_current) {
-                if (doc.sys.code === code) {
-                    this.cache_top.set(code, doc)
+                if (doc.key === key) {
+                    this.cache_top.set(key, doc)
                 }
             }
-            return this.cache_top.get(code)
+            return this.cache_top.get(key)
         } else {
             return undefined
         }
@@ -161,38 +161,38 @@ export class DBCore implements IDBCore {
 
     add_mut(doc: Document): [boolean, string?] {
         try {
-            if (doc.sys.id === undefined) doc.sys.id = doc.sys.code + '^' + Date.now()
-            attach_doc_class(doc)
-            const [ok, msg] = doc.class.before_add(doc, this)
+            if (doc.id === undefined) doc.id = doc.key + '^' + Date.now()
+            attach_doc_meta(doc)
+            const [ok, msg] = doc.meta.before_add(doc, this)
             if (ok) {
                 this.mut_current.push(doc)
                 this.to_cache(doc)
-                doc.class.after_add(doc, this)
+                doc.meta.after_add(doc, this)
             }
             return [ok, msg]
         } catch(e) {
-            console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
-            console.log('process is aborted !')
+            console.log(JSON.stringify(doc, null, '\t') + '\n' + e)
+            console.log('Process is aborted !')
             Deno.exit()
         }
     }
 
     private to_cache(doc: Document, log?: Log) {
-        if (doc.class.cache_doc) {
-            if (!this.cache_doc.has(doc.sys.id)) log?.inc_processed()
-            this.cache_doc.set(doc.sys.id, doc)
+        if (doc.meta.cache_doc) {
+            if (!this.cache_doc.has(doc.id)) log?.inc_processed()
+            this.cache_doc.set(doc.id, doc)
         }
-        if (doc.class.cache_top) {
-            if (!this.cache_top.has(doc.sys.code)) log?.inc_processed1()
-            this.cache_top.set(doc.sys.code, doc)
+        if (doc.meta.cache_top) {
+            if (!this.cache_top.has(doc.key)) log?.inc_processed1()
+            this.cache_top.set(doc.key, doc)
         }
     }
 
-    doc_class(classname: string): DocClass {
-        return get_doc_class(classname)
+    doc_meta(type: string): DocMeta {
+        return get_doc_meta(type)
     }
 
-    code_from_id(id: string): string {
+    key_from_id(id: string): string {
         return id.slice(0, id.indexOf('^'))
     }
 
@@ -240,7 +240,7 @@ export class DBCore implements IDBCore {
     }
 }
 
-class DBReaderClassify implements IDBReader {
+class DBReaderMeta implements IDBReader {
     private db: DBReaderSync
     readonly log?: Log
 
@@ -253,19 +253,19 @@ class DBReaderClassify implements IDBReader {
         let doc = this.db.next()
         if (!doc) return false
         try {
-            attach_doc_class(doc)
+            attach_doc_meta(doc)
             this.log?.print_progress()
             return doc
         } catch(e) {
             console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
-            this.log?.inc_classerror()
+            this.log?.inc_typeerror()
             return this.next()
         }
     }
 }
 
-function attach_doc_class(doc: Document): void {
-    doc.class = get_doc_class(doc.sys.class)
+function attach_doc_meta(doc: Document): void {
+    doc.meta = get_doc_meta(doc.type)
 }
 
 class Log implements IDBLogger {
@@ -275,7 +275,7 @@ class Log implements IDBLogger {
     printmode = ''
     total = 0
     parseerror = 0
-    classerror = 0
+    typeerror = 0
     processed = 0
     processed1 = 0
     processerror = 0
@@ -286,7 +286,7 @@ class Log implements IDBLogger {
     }
     inc_total() { this.total++;  this.cou++ }
     inc_parseerror() { this.parseerror++ }
-    inc_classerror() { this.classerror++ }
+    inc_typeerror() { this.typeerror++ }
     inc_processed() { this.processed++ }
     inc_processed1() { this.processed1++ }
     inc_processerror() { this.processerror++ }
@@ -303,7 +303,7 @@ class Log implements IDBLogger {
             case 'init':
                 console.log(
 `    ====== scan ====== "${this.source}"
-    ${this.total} total (\x1b[31m${this.parseerror}\x1b[0m JSON errors, \x1b[31m${this.classerror}\x1b[0m class errors)
+    ${this.total} total (\x1b[31m${this.parseerror}\x1b[0m JSON errors, \x1b[31m${this.typeerror}\x1b[0m type errors)
     ${this.processed} new docs placed in cache_doc
     ${this.processed1} new keys placed in cache_top
     ${elapsed}s elapsed`
@@ -312,7 +312,7 @@ class Log implements IDBLogger {
             case 'file':
                 console.log(
 `    ====== scan ====== "${this.source}"
-    ${this.total} total (\x1b[31m${this.parseerror}\x1b[0m JSON errors, \x1b[31m${this.classerror}\x1b[0m class errors)
+    ${this.total} total (\x1b[31m${this.parseerror}\x1b[0m JSON errors, \x1b[31m${this.typeerror}\x1b[0m type errors)
     ${this.processed} docs processed \x1b[31m(${this.processerror}\x1b[0m reduce errors)
     ${elapsed}s elapsed`
                 )
@@ -320,7 +320,14 @@ class Log implements IDBLogger {
             case 'cache':
                 console.log(
 `    ====== scan ====== "${this.source}"
-    ${this.total} total (\x1b[31m${this.parseerror}\x1b[0m JSON errors, \x1b[31m${this.classerror}\x1b[0m class errors)
+    ${this.total} total (\x1b[31m${this.parseerror}\x1b[0m JSON errors, \x1b[31m${this.typeerror}\x1b[0m type errors)
+    ${elapsed}s elapsed`
+                )
+                return 4
+            case 'cache_reduce':
+                console.log(
+`    ====== scan ====== "${this.source}"
+    ${this.total} total (\x1b[31m${this.parseerror}\x1b[0m JSON errors)
     ${elapsed}s elapsed`
                 )
                 return 4
