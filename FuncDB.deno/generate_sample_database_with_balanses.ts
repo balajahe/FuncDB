@@ -127,7 +127,7 @@ async function gen_docs() {
                 doc.lines.push(
                     {
                         nomen: nomen,
-                        qty: irand(1, 30),
+                        qty: doctype === 'purch' ? irand(1, 30*20) : irand(1, 30),
                         price: frand(100, 300)
                     }
                 )

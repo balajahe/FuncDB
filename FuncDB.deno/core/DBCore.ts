@@ -50,6 +50,7 @@ export class DBCore implements IDBCore {
                 this.cache_reduce.set(red[0], red[1])
             }
             log.print_final()
+
         } else {
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'init')
             for (let doc = db.next(); doc; doc = db.next()) {
@@ -66,7 +67,6 @@ export class DBCore implements IDBCore {
         db.log.print_final()
 
         console.log('database is initialized !')
-
     }
 
     reduce(
@@ -81,7 +81,7 @@ export class DBCore implements IDBCore {
         const cached = this.cache_reduce.get(key)
         if (cached !== undefined) {
             console.log('    immutable part of result taken from cache')
-            result = cached
+            result = JSON.parse(cached)
         } else {
             const db = new DBReaderClassify(this.dbpath + DBMeta.data_immut, 'file')
             for (let doc = db.next(); doc; doc = db.next()) {
@@ -89,7 +89,7 @@ export class DBCore implements IDBCore {
             }
             db.log.print_final()
             if (!no_cache) {
-                this.cache_reduce.set(key, JSON.parse(JSON.stringify(result)))
+                this.cache_reduce.set(key, JSON.stringify(result))
             }
         }
         const log = new Log('in-memory/mut_current', 'memory')

@@ -1,28 +1,24 @@
 import { DBCore } from './core/DBCore.ts'
-
-function calc(db: DBCore) {
-    const res = db.reduce(
-        (_, doc) => doc.type == 'sale', // фильтруем только продажи
-        (result, doc) => {
-            result.doccou++
-            doc.lines.forEach(line => { // цикл по строкам документа
-                result.linecou++
-                result.amount += line.price * line.qty
-            })
-        },
-        { amount: 0, doccou: 0, linecou: 0 }, // инициализируем аккумулятор
-    )
-    console.log(`
-=======================================
-sale documents count = ${res.doccou}
-amount total = ${res.amount}
-amount per document = ${res.amount / res.doccou}
-lines per document = ${res.linecou / res.doccou}`
-    )
-}
-
 const db = DBCore.open('./sample_database/')  
-calc(db)
+
+const res = db.reduce(
+    (_, doc) => doc.type == 'sale', // фильтруем только продажи
+    (result, doc) => {
+        result.doccou++
+        doc.lines.forEach(line => { // цикл по строкам документа
+            result.linecou++
+            result.amount += line.price * line.qty
+        })
+    },
+    { amount: 0, doccou: 0, linecou: 0 }, // инициализируем аккумулятор
+)
+console.log('\n=======================================' + 
+    '\nsale documents count = ' + res.doccou +
+    '\namount total = ' + res.amount +
+    '\namount per document = ' + res.amount / res.doccou +
+    '\nlines per document = ' + res.linecou / res.doccou
+)
+
 const [ok, msg] = db.add_mut(
     {
         sys: {
@@ -42,9 +38,7 @@ const [ok, msg] = db.add_mut(
         ]
     }
 )
-if (ok) {
-    calc(db)
-} else {
+if (!ok) {
     console.log('\nError adding sale: ' + msg)
     console.log('Run sample3_invent_turnover_balance.ts to adding purch')
 }
