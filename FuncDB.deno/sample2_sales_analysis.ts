@@ -38,8 +38,10 @@ const [ok, msg] = db.add_mut(
         ]
     }
 )
-if (!ok) {
+if (ok) {
+    console.log('\n1 sale document added, run sample again')
+    db.flush()
+} else {
     console.log('\nError adding sale: ' + msg)
-    console.log('Run sample3_invent_turnover_balance.ts to adding purch')
+    console.log('Run "sample3_invent_turnover_balance.ts" to adding purch')
 }
-db.flush()

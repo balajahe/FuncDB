@@ -6,7 +6,7 @@ const dbpath = './sample_database/'
 let personcou = 5000
 let nomencou = 3000
 let stockcou = 50
-let doccou = 10000
+let doccou = 100000
 let maxlinecou = 50
 const mut_scale = 1/10
 
@@ -17,10 +17,12 @@ try {
     Deno.removeSync(dbpath, {recursive: true})
 } catch(_) {}
 Deno.mkdirSync(dbpath)
-
 Deno.openSync(dbpath + DBMeta.data_immut, 'w').close()
 Deno.openSync(dbpath + DBMeta.data_mut_current, 'w').close()
+
+db = DBCore.open(dbpath)
 gen_file()
+db.flush(true) // кэш не записываем, так как мы подменяем файл
 Deno.renameSync(dbpath + DBMeta.data_mut_current, dbpath + DBMeta.data_immut)
 Deno.openSync(dbpath + DBMeta.data_mut_current, 'w').close()
 
@@ -28,17 +30,16 @@ personcou = Math.floor(personcou * mut_scale)
 nomencou = Math.floor(nomencou * mut_scale)
 stockcou = Math.floor(stockcou * mut_scale)
 doccou = Math.floor(doccou * mut_scale)
+db = DBCore.open(dbpath)
 gen_file()
-
+db.flush() // база готова вместе с кэшем
 
 function gen_file() {
-    db = DBCore.open(dbpath)
     ts = Date.now()
     gen_persons()
     gen_nomens()
     gen_stocks()
     gen_docs()
-    db.flush(true) // кэш не записываем
 }
 
 // persons (partners)
@@ -144,7 +145,7 @@ async function gen_docs() {
             }
         }
     }
-    console.log('\ngenerated ' + couall + ' docs in-memory, writing file...')
+    console.log('\ngenerated total docs in-memory: ' + couall + '            ')
 } 
 
 function frand(min: number, max: number): number {

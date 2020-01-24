@@ -83,4 +83,5 @@ db.add_mut(
        ]
     }
 )
+console.log('\n1 purch document added, run sample again')
 db.flush()

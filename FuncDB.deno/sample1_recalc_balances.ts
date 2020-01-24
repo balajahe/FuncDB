@@ -3,7 +3,7 @@ const db = DBCore.open('./sample_database/')
 
 // считаем все комбинации по всем документам за 1 проход
 const bals = db.reduce(
-    (_, doc) => doc.sys.slass === 'purch' || doc.sys.class === 'sale' || doc.sys.class === 'transfer',
+    (_, doc) => doc.sys.class === 'purch' || doc.sys.class === 'sale' || doc.sys.class === 'transfer',
     (result, doc) => {
         doc.lines.forEach((line) => {
             switch (doc.sys.class) {
@@ -13,7 +13,7 @@ const bals = db.reduce(
                 case 'sale':
                     calc(key(line.nomen, doc.stock), -1)
                     break
-                case 'thansfer':
+                case 'transfer':
                     calc(key(line.nomen, doc.stock1), -1)
                     calc(key(line.nomen, doc.stock2), +1)
                     break
@@ -47,4 +47,6 @@ for (const key of Object.keys(bals)) {
     }
 }
 console.log('\nadded balances: ' + cou)
-db.flush()
+if (cou > 0) {
+    db.flush()
+}

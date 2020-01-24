@@ -197,35 +197,46 @@ export class DBCore implements IDBCore {
     }
 
     flush(no_cache: boolean = false) {
+        console.log('\nflushing database to disk...')
+
+        let cou = 0 
         let db = DBWriterSync.rewrite(this.dbpath + DBMeta.data_mut_current)
         for (const doc of this.mut_current.values()) {
             db.add(doc)
+            cou++
         }
         db.close()
-        console.log('\nmut_current data written to disk !')
+        console.log('    mut_current: ' + cou)
 
         if (!no_cache) {
+            cou = 0
             db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_doc)
             for (const doc of this.cache_doc.values()) {
                 db.add(doc)
+                cou++
             }
             db.close()
-            console.log('cache_doc written to disk !')
+            console.log('    cache_doc: ' + cou)
 
+            cou = 0
             db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_top)
             for (const doc of this.cache_top.values()) {
                 db.add(doc)
+                cou++
             }
             db.close()
-            console.log('cache_top written to disk !')
+            console.log('    cache_top: ' + cou)
 
+            cou = 0
             db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_reduce)
             for (const entr of this.cache_reduce.entries()) {
                 db.add(entr)
+                cou++
             }
             db.close()
-            console.log('cache_reduce written to disk !')
+            console.log('    cache_reduce: ' + cou)
         }
+        console.log('database is flushed !')
     }
 }
 

@@ -6,9 +6,9 @@ const dbpath = './sample_database/'
 let personcou = 5000
 let nomencou = 3000
 let stockcou = 50
-let doccou = 250000
+let doccou = 100000
 let maxlinecou = 50
-const mut_scale = 1/20
+const mut_scale = 1/10
 
 let compact: boolean
 let db: BufWriter
@@ -21,7 +21,7 @@ Deno.mkdirSync(dbpath)
 
 compact = true
 await gen_file(DBMeta.data_immut)
-console.log('immutable docs = ' + (personcou + nomencou + stockcou + doccou*4))
+console.log('immutable docs = ' + (personcou + nomencou + stockcou + doccou*3))
 
 compact = false
 personcou = Math.floor(personcou * mut_scale)
@@ -29,7 +29,7 @@ nomencou = Math.floor(nomencou * mut_scale)
 stockcou = Math.floor(stockcou * mut_scale)
 doccou = Math.floor(doccou * mut_scale)
 await gen_file(DBMeta.data_mut_current)
-console.log('mutable docs = ' + (personcou + nomencou + stockcou + doccou*4))
+console.log('mutable docs = ' + (personcou + nomencou + stockcou + doccou*3))
 
 
 async function gen_file(fname: string) {
@@ -103,7 +103,7 @@ async function gen_stocks() {
 // all documents: purch, transfer, sale
 async function gen_docs() {
     const date = new Date().toISOString().substr(0,10)
-    const doc_types = ['purch', 'transfer.out', 'transfer.in', 'sale']
+    const doc_types = ['purch', 'transfer', 'sale']
     for (let doctype of doc_types) {
         for (let i = 0; i < doccou; i++) {
             const person = 'person.' + irand(0, personcou-1) + '^' + ts
@@ -128,7 +128,7 @@ async function gen_docs() {
                 lines += `
                         {
                             "nomen": "${nomen}",
-                            "qty": ${irand(1, 30)},
+                            "qty": ${doctype === 'purch' ? irand(1, 30*20) : irand(1, 30)},
                             "price": ${frand(100, 300)}
                         }`
             }
