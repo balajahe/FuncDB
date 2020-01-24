@@ -46,8 +46,8 @@ const res = db.reduce(
 const keys = Object.keys(res)
 keys.sort()
 
-console.log('\nnomen type       | stock type       | person type      | + qty    | debet amount      | - qty   | credit amount     | balance amount    ')
-console.log('=======================================================================================================================================')
+console.log('\nnomen type       | stock type       | person type      | + qty    | debet amount      | - qty   | credit amount     | bal. qty ')
+console.log('===============================================================================================================================')
 let cou = 0
 for (const key of keys) {
     const row = res[key]
@@ -60,7 +60,7 @@ for (const key of keys) {
         row.debit_amount + ' | ' +            
         row.credit_qty + ' | ' +            
         row.credit_amount + ' | ' +            
-        (row.debit_amount - row.credit_amount)          
+        (row.debit_qty - row.credit_qty)          
     )
 }
 
