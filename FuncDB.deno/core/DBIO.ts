@@ -1,9 +1,9 @@
 import { BufReader } from 'https://deno.land/std/io/bufio.ts'
 import { Document, DBMeta, IDBLogger } from './DBMeta.ts'
 
-const read_buf_size = 40960
-const chunk_buf_size = 40960
-const write_buf_size = 40960
+const read_buf_size = 81920
+const chunk_buf_size = 81920
+const write_buf_size = 81920
 
 export interface IDBReader {
     next?(): Document | false
@@ -59,10 +59,10 @@ export class DBReaderSync implements IDBReader {
                 this.log?.inc_total()
                 try {
                     const res_o = JSON.parse(res_s)
-                    this.log?.inc_parsed()
                     return res_o
                 } catch(e) {
                     console.log(res_s + '\n' + e + '\n' + e.stack)
+                    this.log?.inc_parseerror()
                     return this.next()
                 }
         }
@@ -106,10 +106,10 @@ export class DBReaderAsync implements IDBReader {
                 this.log?.inc_total()
                 try {
                     const res_o = JSON.parse(res_s)
-                    this.log?.inc_parsed()
                     return res_o
                 } catch(e) {
                     console.log(res_s + '\n' + e + '\n' + e.stack)
+                    this.log?.inc_parseerror()
                     return await this.next()
                 }
         }

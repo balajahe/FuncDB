@@ -14,10 +14,10 @@ export abstract class DocClass {
     static cache_doc = false
     static cache_top = false
 
-    static before_del(doc: Document, db: IDBCore): true | string { return true }
+    static before_del(doc: Document, db: IDBCore): [boolean, string?] { return [true,] }
     static after_del(doc: Document, db: IDBCore): void {}
 
-    static before_add(doc: Document, db: IDBCore): true | string { return true }
+    static before_add(doc: Document, db: IDBCore): [boolean, string?] { return [true,] }
     static after_add(doc: Document, db: IDBCore): void {}
 }
 
@@ -30,7 +30,7 @@ export interface IDBCore {
     ): Result;
     get(id: string, no_scan?: boolean): Document | undefined
     get_top(code: string, no_scan?: boolean): Document | undefined
-    add_mut(doc: Document): true | string
+    add_mut(doc: Document): [boolean, string?]
     doc_class(classname: string): DocClass
     code_from_id(id: string): string
     flush(no_cache?: boolean): void
@@ -38,8 +38,8 @@ export interface IDBCore {
 
 export interface IDBLogger {
     inc_total(): void
-    inc_parsed(): void
-    inc_classified(): void
+    inc_parseerror(): void
+    inc_classerror(): void
     inc_processed() : void
     inc_processed1() : void
     inc_processerror() : void

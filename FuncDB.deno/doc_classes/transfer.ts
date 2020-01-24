@@ -1,14 +1,14 @@
 import { Document, DocClass, IDBCore } from '../core/DBMeta.ts'
 
 export default class sale extends DocClass {
-    static before_add(doc: Document, db: IDBCore): true | string {
+    static before_add(doc: Document, db: IDBCore): [boolean, string?] {
         for (let line of doc.lines) {
             const bal_key = db.code_from_id(line.nomen) + '|' + db.code_from_id(doc.stock1)
-            // второй параметр get() - запрет скана, ищем только в кэше
+            // второй параметр get(, true) - запрет скана, ищем только в кэше
             const bal = db.get_top(bal_key, true)?.value ?? 0
-            if (bal < line.qty) return `"${bal_key}": requested ${line.qty} but balance is only ${bal}`
+            if (bal < line.qty) return [false, `"${bal_key}": requested ${line.qty} but balance is only ${bal}`]
         }
-        return true
+        return [true,]
     }
 
     static after_add(doc: Document, db: IDBCore): void {

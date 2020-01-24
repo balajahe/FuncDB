@@ -6,9 +6,9 @@ const dbpath = './sample_database/'
 let personcou = 5000
 let nomencou = 3000
 let stockcou = 50
-let doccou = 333333
+let doccou = 10000
 let maxlinecou = 50
-const mut_scale = 1/20
+const mut_scale = 1/10
 
 let db: DBCore
 let ts: number
@@ -132,19 +132,19 @@ async function gen_docs() {
                     }
                 )
             }
-            const add_ok = db.add_mut(doc)
-            if (add_ok) {
+            const [ok, msg] = db.add_mut(doc)
+            if (ok) {
                 i++
                 couall++
                 cou++
-                if (cou === 10000) {
-                    console.log('generated docs in memory - ' + couall + '\x1b[1A')
+                if (cou === 1000) {
+                    console.log('\ngenerating ' + doctype + ' docs in-memory: ' + i + '            \x1b[2A')
                     cou = 0
                 }
             }
         }
     }
-    console.log('generated docs - ' + couall + ', writing file...')
+    console.log('\ngenerated ' + couall + ' docs in-memory, writing file...')
 } 
 
 function frand(min: number, max: number): number {

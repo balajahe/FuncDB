@@ -23,7 +23,7 @@ lines per document = ${res.linecou / res.doccou}`
 
 const db = DBCore.open('./sample_database/')  
 calc(db)
-const add_ok = db.add_mut(
+const [ok, msg] = db.add_mut(
     {
         sys: {
             class: 'sale',
@@ -42,10 +42,10 @@ const add_ok = db.add_mut(
         ]
     }
 )
-if (add_ok === true) {
+if (ok) {
     calc(db)
 } else {
-    console.log('\nError adding sale: ' + add_ok)
+    console.log('\nError adding sale: ' + msg)
     console.log('Run sample3_invent_turnover_balance.ts to adding purch')
 }
 db.flush()
