@@ -1,32 +1,49 @@
 import { Document, DocMeta, IDBCore } from '../core/DBMeta.ts'
 
-export default class sale extends DocMeta {
+export default class Transfer extends DocMeta {
     static before_add(doc: Document, db: IDBCore): [boolean, string?] {
-        for (let line of doc.lines) {
-            const bal_key = 'bal' + '|' + db.key_from_id(line.nomen) + '|' + db.key_from_id(doc.stock1)
-            // второй параметр get() - запрет скана, ищем только в топ-кэше
-            const bal_doc = db.get_top(bal_key, true)
-            const bal = bal_doc?.val ?? 0
-            if (bal < line.qty) {
-                return [false, `"${bal_key}": requested ${line.qty} but balance is only ${bal}`]
+        let err = ''
+        doc.lines.forEach(line => {
+            const key = 'bal' + '|' + db.key_from_id(line.nomen) + '|' + db.key_from_id(doc.stock1)
+            const bal = db.get_top(key, true) // true - запрет скана, ищем только в топ-кэше
+            const bal_qty = bal?.qty ?? 0
+            const bal_val = bal?.val ?? 0
+            if (bal_qty < line.qty) {
+                err += '\n"' + key + '": requested ' + line.qty + ' but balance is only ' + bal_qty
             } else {
-                line.from = bal_doc.id
-                return [true,]
+                line.cost = bal_val / bal_qty
+                line.from = bal.id
             }
-        }
+        })
+        return  err !== '' ? [false, err] : [true,]
     }
 
     static after_add(doc: Document, db: IDBCore): void {
         doc.lines.forEach(line => {
-            let bal_key = 'bal' + '|' + db.key_from_id(line.nomen) + '|' + db.key_from_id(doc.stock1)
-            let bal_old = db.get_top(bal_key, true)?.val ?? 0
-            let bal_new = { type: 'bal', key: bal_key, val: bal_old - line.qty }
-            db.add_mut(bal_new)
-
-            bal_key = 'bal' + '|' + db.key_from_id(line.nomen) + '|' + db.key_from_id(doc.stock2)
-            bal_old = db.get_top(bal_key, true)?.val ?? 0
-            bal_new = { type: 'bal', key: bal_key, val: bal_old + line.qty }
-            db.add_mut(bal_new)
+            let key = 'bal' + '|' + db.key_from_id(line.nomen) + '|' + db.key_from_id(doc.stock1)
+            let bal = db.get_top(key, true)
+            let bal_qty = bal?.qty ?? 0
+            let bal_val = bal?.val ?? 0
+            db.add_mut(
+                { 
+                    type: 'bal', 
+                    key: key,
+                    qty: bal_qty - line.qty,
+                    val: bal_val - line.cost * line.qty
+                }
+            )
+            key = 'bal' + '|' + db.key_from_id(line.nomen) + '|' + db.key_from_id(doc.stock2)
+            bal = db.get_top(key, true)
+            bal_qty = bal?.qty ?? 0
+            bal_val = bal?.val ?? 0
+            db.add_mut(
+                { 
+                    type: 'bal', 
+                    key: key,
+                    qty: bal_qty + line.qty,
+                    val: bal_val + line.cost * line.qty
+                }
+            )
         })
     }
 }

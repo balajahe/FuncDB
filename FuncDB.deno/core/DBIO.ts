@@ -1,9 +1,11 @@
 import { BufReader } from 'https://deno.land/std/io/bufio.ts'
 import { Document, DBMeta, IDBLogger } from './DBMeta.ts'
 
-const read_buf_size = 81920
-const chunk_buf_size = 81920
-const write_buf_size = 81920
+const read_buf_size = 40960
+const chunk_buf_size = 409600 // надо сделать потоковый парсер чанка, иначе Result может не влезть
+const write_buf_size = 4096 
+// при записи через File.write() невозможно указать буфер отличный от стандартного, 
+// а бOльшие буфера просто молча обрезаются и не записываются в файл (дефект Deno)
 
 export interface IDBReader {
     next?(): Document | false
@@ -127,7 +129,6 @@ export class DBWriterSync {
     static append(fpath: string) { return new DBWriterSync(fpath, 'a') }
     static rewrite(fpath: string) { return new DBWriterSync(fpath, 'w') }
 
-    // на больших объектах - обрезает строку, надо переделать на буфер-райтер (синхронного нет в Deno)
     add(doc: Document, compact: boolean = true) {
         let doc_s: string
         if (compact) {
@@ -135,7 +136,19 @@ export class DBWriterSync {
         } else {
             doc_s = JSON.stringify(doc, null, '\t')
         }
-        this.file.writeSync(new TextEncoder().encode('\n' + doc_s + this.delim))
+        // синхронного буфер-райтера похоже нет в Deno, приходится извращаться
+        const arr = new TextEncoder().encode('\n' + doc_s + this.delim)
+        let i = 0
+        while (i < arr.length) {
+            let buf: Uint8Array
+            if (arr.length <= i + write_buf_size) {
+                buf = arr.subarray(i)
+            } else {
+                buf = arr.subarray(i, i + write_buf_size)
+            }
+            this.file.writeSync(buf)
+            i += write_buf_size
+        }
     }
 
     close() {

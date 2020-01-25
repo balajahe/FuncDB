@@ -6,9 +6,7 @@ class ResultRow { // строка результирующей таблицы
     stock_type = ''
     person_type = ''
     debit_qty = 0
-    debit_amount = 0
     credit_qty = 0
-    credit_amount = 0
 }
 
 const res = db.reduce(
@@ -30,24 +28,25 @@ const res = db.reduce(
                 result[key] = row
             }
             
-            if (doc.type === 'purch') {
-                row.debit_qty += line.qty
-                row.debit_amount += line.qty * line.price
-            } else if (doc.type === 'sale') {
-                row.credit_qty += line.qty
-                row.credit_amount += line.qty * line.price
+            switch (doc.type) {
+                case 'purch':
+                    row.debit_qty += line.qty
+                    break
+                case'sale':
+                    row.credit_qty += line.qty
+                    break
             }
         })
     },
-    {}, // Map не подходит в качестве аккумулятора, так как он не сериализуется
+    {} // Map не подходит в качестве аккумулятора, так как он не сериализуется
 )
 
 // сортируем результат
 const keys = Object.keys(res)
 keys.sort()
 
-console.log('\nnomen type       | stock type       | person type      | + qty    | debet amount      | - qty   | credit amount     | bal. qty ')
-console.log('===============================================================================================================================')
+console.log('\n nomencl. type   | stock type       | person type      | + qty    | - qty   | balance')
+console.log('======================================================================================')
 let cou = 0
 for (const key of keys) {
     const row = res[key]
@@ -57,9 +56,7 @@ for (const key of keys) {
         row.stock_type.padEnd(16) + ' | ' +
         row.person_type.padEnd(16) + ' | ' +
         row.debit_qty + ' | ' +            
-        row.debit_amount + ' | ' +            
         row.credit_qty + ' | ' +            
-        row.credit_amount + ' | ' +            
         (row.debit_qty - row.credit_qty)          
     )
 }

@@ -2,7 +2,7 @@ import { DBCore } from './core/DBCore.ts'
 const db = DBCore.open('./sample_database/')  
 
 const res = db.reduce(
-    (_, doc) => true, // ничего не фильтруем, это уже сделано в reducer
+    (_, doc) => doc.type == 'purch' || doc.type == 'transfer' || doc.type == 'sale',
     (result, doc) => {
         switch (doc.type) {
             case 'purch':
@@ -21,6 +21,7 @@ const res = db.reduce(
             doc.lines.forEach(line => { // цикл по строкам документа
                 res.linecou++
                 res.amount += line.price * line.qty
+                // у строк перемещений нет цены, поэтому полчим NaN
             })
         }
         
@@ -28,7 +29,7 @@ const res = db.reduce(
     {   // инициализируем аккумулятор-результат
         purch: { amount: 0, doccou: 0, linecou: 0 },
         transfer: { amount: 0, doccou: 0, linecou: 0 },
-        sale: { amount: 0, doccou: 0, linecou: 0 },
+        sale: { amount: 0, doccou: 0, linecou: 0 }
     }
 )
 out('purch', res.purch)
@@ -53,11 +54,12 @@ const [ok, msg] = db.add_mut(
 )
 if (ok) {
     console.log('\n1 sale document added, run this sample again')
-    db.flush()
 } else {
     console.log('\nError adding sale: ' + msg)
     console.log('Run "sample3_invent_turnover_balance.ts" to adding purch')
 }
+//db.flush(false, false)
+db.flush()
 
 function out(doctype, res) {
     console.log('\n=======================================' + 

@@ -115,14 +115,15 @@ async function gen_docs() {
             }
             doc.lines = []
             for (let j = 0; j < irand(1, maxlinecou); j++) {
-                const nomen = 'nomen.' + irand(0, nomencou-1) + '^' + ts
-                doc.lines.push(
+                const line: any = 
                     {
-                        nomen: nomen,
-                        qty: doctype === 'purch' ? irand(1, 30*20) : irand(1, 30),
-                        price: frand(100, 300)
+                        nomen: 'nomen.' + irand(0, nomencou-1) + '^' + ts,
+                        qty: doctype === 'purch' ? irand(1, 30*10) : irand(1, 30)
                     }
-                )
+                if (doctype !== 'transfer') {
+                    line.price = frand(100, 300)
+                }
+                doc.lines.push(line)
             }
             const [ok, msg] = db.add_mut(doc)
             if (ok) {

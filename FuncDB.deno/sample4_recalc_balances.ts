@@ -1,6 +1,13 @@
 import { DBCore } from './core/DBCore.ts'
 const db = DBCore.open('./sample_database/')  
 
+class ResultRow {
+    key = ''
+    qty_purch = 0
+    val_purch = 0
+    qty = 0
+}
+
 // считаем все комбинации по всем документам за 1 проход
 const bals = db.reduce(
     (_, doc) => doc.type === 'purch' || doc.type === 'sale' || doc.type === 'transfer',
@@ -8,7 +15,7 @@ const bals = db.reduce(
         doc.lines.forEach((line) => {
             switch (doc.type) {
                 case 'purch':
-                    calc(key(line.nomen, doc.stock), +1)
+                    calc(key(line.nomen, doc.stock), +1, true)
                     break
                 case 'sale':
                     calc(key(line.nomen, doc.stock), -1)
@@ -23,12 +30,18 @@ const bals = db.reduce(
                 return 'bal' + '|' + db.key_from_id(id1) + '|' +  db.key_from_id(id2)
             }
             
-            function calc(key, sign) {
+            function calc(key, sign, purch = false) {
                 let row = result[key]
                 if (row === undefined) {
-                    result[key] = 0  
+                    row = new ResultRow()
+                    row.key = key
+                    result[key] = row
                 }   
-                result[key] += line.qty * sign
+                row.qty += line.qty * sign
+                if (purch) {
+                    row.qty_purch += line.qty * sign
+                    row.val_purch += line.qty * line.price * sign
+                }
             }
         })
     },
@@ -40,9 +53,15 @@ const bals = db.reduce(
 let cou = 0
 for (const key of Object.keys(bals)) {
     const new_bal = bals[key]
-    const old_bal = db.get_top(key, true)?.val ?? 0
-    if (new_bal !== old_bal) {
-        db.add_mut({ type: 'bal', key: key, val: new_bal })
+    const old_bal = db.get_top(key, true)
+    if (new_bal.qty !== old_bal?.qty ?? 0) {
+        db.add_mut(
+            { 
+                type: 'bal', 
+                key: key, 
+                qty: new_bal.qty,
+                val: new_bal.val_purch * new_bal.qty / new_bal.qty_purch
+        })
         cou ++
     }
 }

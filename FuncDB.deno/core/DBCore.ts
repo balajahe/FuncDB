@@ -230,7 +230,7 @@ export class DBCore implements IDBCore {
             cou = 0
             db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_reduce)
             for (const entr of this.cache_reduce.entries()) {
-                db.add(entr, compact)
+                db.add(entr, true)
                 cou++
             }
             db.close()
