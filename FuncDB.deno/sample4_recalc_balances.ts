@@ -1,5 +1,5 @@
 import { DBCore } from './core/DBCore.ts'
-const db = DBCore.open('./sample_database/')  
+const db = DBCore.open('./database/')  
 
 class ResultRow {
     key = ''

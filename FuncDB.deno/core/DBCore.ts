@@ -1,6 +1,6 @@
-import { Document, Result, DBMeta, DocMeta, IDBCore, IDBLogger } from './DBMeta.ts'
+import { Document, Result, DBMeta, DocClass, IDBCore, IDBLogger } from './DBMeta.ts'
 import { IDBReader, DBReaderSync, DBWriterSync } from './DBIO.ts'
-import { get_doc_meta } from '../doc_meta/.get_doc_meta.ts'
+import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
 
 export class DBCore implements IDBCore {
     private dbpath: string
@@ -32,13 +32,13 @@ export class DBCore implements IDBCore {
             }
         }
         if (!no_cache) {
-            let db = new DBReaderMeta(this.dbpath + DBMeta.cache_doc, 'cache')
+            let db = new DBReaderWithClass(this.dbpath + DBMeta.cache_doc, 'cache')
             for (let doc = db.next(); doc; doc = db.next()) {
                 this.cache_doc.set(doc.id, doc)
             }
             db.log.print_final()
 
-            db = new DBReaderMeta(this.dbpath + DBMeta.cache_top, 'cache')
+            db = new DBReaderWithClass(this.dbpath + DBMeta.cache_top, 'cache')
             for (let doc = db.next(); doc; doc = db.next()) {
                 this.cache_top.set(doc.key, doc)
             }
@@ -52,14 +52,14 @@ export class DBCore implements IDBCore {
             log.print_final()
 
         } else {
-            const db = new DBReaderMeta(this.dbpath + DBMeta.data_immut, 'init')
+            const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut, 'init')
             for (let doc = db.next(); doc; doc = db.next()) {
                 this.to_cache(doc, db.log)
             }
             db.log.print_final()
         }
 
-        const db = new DBReaderMeta(this.dbpath + DBMeta.data_mut_current, 'init')
+        const db = new DBReaderWithClass(this.dbpath + DBMeta.data_mut_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
             this.to_cache(doc, db.log)
             this.mut_current.push(doc)
@@ -83,7 +83,7 @@ export class DBCore implements IDBCore {
             console.log('    immutable part of result taken from cache')
             result = JSON.parse(cached)
         } else {
-            const db = new DBReaderMeta(this.dbpath + DBMeta.data_immut, 'file')
+            const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut, 'file')
             for (let doc = db.next(); doc; doc = db.next()) {
                 reduce1(doc, db.log)
             }
@@ -119,7 +119,7 @@ export class DBCore implements IDBCore {
             return cached
         } else if (!no_scan) {
             console.log('\nget("' + id + '") started...')
-            const db = new DBReaderMeta(this.dbpath + DBMeta.data_immut)
+            const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
                 if (doc.id === id) {
                     this.cache_doc.set(id, doc)
@@ -142,7 +142,7 @@ export class DBCore implements IDBCore {
             return cached
         } else if (!no_scan) {
             console.log('\nget_top("' + key + '") started...')
-            const db = new DBReaderMeta(this.dbpath + DBMeta.data_immut)
+            const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
                 if (doc.key === key) {
                     this.cache_top.set(key, doc)
@@ -162,12 +162,12 @@ export class DBCore implements IDBCore {
     add_mut(doc: Document): [boolean, string?] {
         try {
             if (doc.id === undefined) doc.id = doc.key + '^' + Date.now()
-            attach_doc_meta(doc)
-            const [ok, msg] = doc.meta.before_add(doc, this)
+            attach_doc_class(doc)
+            const [ok, msg] = doc.class.before_add(doc, this)
             if (ok) {
                 this.mut_current.push(doc)
                 this.to_cache(doc)
-                doc.meta.after_add(doc, this)
+                doc.class.after_add(doc, this)
             }
             return [ok, msg]
         } catch(e) {
@@ -178,18 +178,18 @@ export class DBCore implements IDBCore {
     }
 
     private to_cache(doc: Document, log?: Log) {
-        if (doc.meta.cache_doc) {
+        if (doc.class.cache_doc) {
             if (!this.cache_doc.has(doc.id)) log?.inc_processed()
             this.cache_doc.set(doc.id, doc)
         }
-        if (doc.meta.cache_top) {
+        if (doc.class.cache_top) {
             if (!this.cache_top.has(doc.key)) log?.inc_processed1()
             this.cache_top.set(doc.key, doc)
         }
     }
 
-    doc_meta(type: string): DocMeta {
-        return get_doc_meta(type)
+    doc_class(type: string): DocClass {
+        return get_doc_class(type)
     }
 
     key_from_id(id: string): string {
@@ -240,7 +240,7 @@ export class DBCore implements IDBCore {
     }
 }
 
-class DBReaderMeta implements IDBReader {
+class DBReaderWithClass implements IDBReader {
     private db: DBReaderSync
     readonly log?: Log
 
@@ -253,7 +253,7 @@ class DBReaderMeta implements IDBReader {
         let doc = this.db.next()
         if (!doc) return false
         try {
-            attach_doc_meta(doc)
+            attach_doc_class(doc)
             this.log?.print_progress()
             return doc
         } catch(e) {
@@ -264,8 +264,8 @@ class DBReaderMeta implements IDBReader {
     }
 }
 
-function attach_doc_meta(doc: Document): void {
-    doc.meta = get_doc_meta(doc.type)
+function attach_doc_class(doc: Document): void {
+    doc.class = get_doc_class(doc.type)
 }
 
 class Log implements IDBLogger {

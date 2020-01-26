@@ -1,5 +1,5 @@
 import { DBCore } from './core/DBCore.ts'
-const db = DBCore.open('./sample_database/')  
+const db = DBCore.open('./database/')  
 
 const res = db.reduce(
     (_, doc) => doc.type == 'purch' || doc.type == 'transfer' || doc.type == 'sale',
@@ -56,7 +56,7 @@ if (ok) {
     console.log('\n1 sale document added, run this sample again')
 } else {
     console.log('\nError adding sale: ' + msg)
-    console.log('Run "sample3_invent_turnover_balance.ts" to adding purch')
+    console.log('Run "sample2_invent_turnover_balance.ts" to adding purch')
 }
 //db.flush(false, false)
 db.flush()

@@ -1,6 +1,6 @@
-import { Document, DocMeta, IDBCore } from '../core/DBMeta.ts'
+import { Document, DocClass, IDBCore } from '../core/DBMeta.ts'
 
-export default class Purch extends DocMeta {
+export default class Purch extends DocClass {
     static after_add(doc: Document, db: IDBCore): void {
         doc.lines.forEach(line => {
             const key = 'bal' + '|' + db.key_from_id(line.nomen) + '|' + db.key_from_id(doc.stock)

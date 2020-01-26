@@ -10,7 +10,7 @@ export const enum DBMeta {
     cache_reduce = 'cache_reduce.json'
 }
 
-export abstract class DocMeta {
+export abstract class DocClass {
     static cache_doc = false
     static cache_top = false
 
@@ -31,7 +31,7 @@ export interface IDBCore {
     get(id: string, no_scan?: boolean): Document | undefined
     get_top(key: string, no_scan?: boolean): Document | undefined
     add_mut(doc: Document): [boolean, string?]
-    doc_meta(type: string): DocMeta
+    doc_class(type: string): DocClass
     key_from_id(id: string): string
     flush(no_cache?: boolean, compact?: boolean): void
 }

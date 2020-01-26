@@ -1,7 +1,7 @@
 import { DBCore } from './core/DBCore.ts'
 import { DBMeta } from './core/DBMeta.ts'
 
-const dbpath = './sample_database/'
+const dbpath = './database/'
 
 let personcou = 5000
 let nomencou = 3000
@@ -48,7 +48,7 @@ function gen_persons() {
     for (let i = 0; i < personcou; i++) {
         let doc = 
             {
-                type: 'ref',
+                type: 'person',
                 key: 'person.' + i,
                 id: 'person.' + i + '^' + ts,
                 erp_type: 'person.' + arand(person_types),
@@ -64,7 +64,7 @@ async function gen_nomens() {
     for (let i = 0; i < nomencou; i++) {
         let doc = 
             {
-                type: 'ref',
+                type: 'nomen',
                 key: 'nomen.' + i,
                 id: 'nomen.' + i + '^' + ts,
                 erp_type: 'nomen.' + arand(nomen_types),
@@ -80,7 +80,7 @@ async function gen_stocks() {
     for (let i = 0; i < stockcou; i++) {
         let doc =
             {
-                type: 'ref',
+                type: 'stock',
                 key: 'stock.' + i,
                 id: 'stock.' + i + '^' + ts,
                 erp_type: 'stock.' + arand(stock_types),

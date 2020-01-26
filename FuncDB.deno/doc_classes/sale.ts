@@ -1,6 +1,6 @@
-import { Document, DocMeta, IDBCore } from '../core/DBMeta.ts'
+import { Document, DocClass, IDBCore } from '../core/DBMeta.ts'
 
-export default class Sale extends DocMeta {
+export default class Sale extends DocClass {
     static before_add(doc: Document, db: IDBCore): [boolean, string?] {
         let err = ''
         doc.lines.forEach(line => {
