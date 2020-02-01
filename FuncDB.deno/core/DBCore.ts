@@ -9,7 +9,7 @@ export class DBCore implements IDBCore {
     private cache_top = new Map<string, Document>()
     private cache_reduce = new Map<string, Result>()
 
-    private constructor(dbpath) { 
+    constructor(dbpath) { 
         this.dbpath = dbpath 
     }
 
@@ -19,7 +19,7 @@ export class DBCore implements IDBCore {
         return db
     }
    
-    private init(no_cache: boolean = false) {
+    protected init(no_cache: boolean = false) {
         console.log('\ndatabase initialization started...')
 
         if (!no_cache) {
@@ -113,6 +113,24 @@ export class DBCore implements IDBCore {
         }
     }
 
+    reduce_top(
+        filter: (result: Result, doc: Document) => boolean, 
+        reducer: (result: Result, doc: Document) => void,
+        result: Result,
+    ): Result {
+        console.log('\nreduce_top() started...')
+        for (let doc of this.cache_top.values()) {
+            try {
+                if(filter(result, doc)) {
+                    reducer(result, doc)
+                }
+            } catch(e) {
+                console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
+            }
+        }
+        return result
+    }
+
     get(id: string, no_scan: boolean = false): Document | undefined {
         const cached = this.cache_doc.get(id)
         if (cached !== undefined) {
@@ -161,7 +179,7 @@ export class DBCore implements IDBCore {
 
     add_mut(doc: Document): [boolean, string?] {
         try {
-            if (doc.id === undefined) doc.id = doc.key + '^' + Date.now()
+            if (doc.id === undefined || doc.id === null || doc.id === '') doc.id = doc.key + '^' + Date.now()
             attach_doc_class(doc)
             const [ok, msg] = doc.class.before_add(doc, this)
             if (ok) {
@@ -171,7 +189,7 @@ export class DBCore implements IDBCore {
             }
             return [ok, msg]
         } catch(e) {
-            console.log(JSON.stringify(doc, null, '\t') + '\n' + e)
+            console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
             console.log('Process is aborted !')
             Deno.exit()
         }

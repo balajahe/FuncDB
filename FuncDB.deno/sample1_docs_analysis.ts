@@ -1,45 +1,45 @@
-import { DBCore } from './core/DBCore.ts'
-const db = DBCore.open('./database/')  
+import { ERPCore } from './core/ERPCore.ts'
+const db = ERPCore.open('./database/')  
+
+class ResultRow { // строка результирующей таблицы
+    doctype = ''
+    doccou = 0
+    linecou = 0
+    amount = 0
+    constructor(type) { this.doctype = type }
+}
 
 const res = db.reduce(
-    (_, doc) => doc.type == 'purch' || doc.type == 'transfer' || doc.type == 'sale',
+    (_, doc) => doc.type.startsWith('post.') || doc.type.startsWith('open.'),
     (result, doc) => {
-        switch (doc.type) {
-            case 'purch':
-                calc(result.purch)
-                break
-            case 'transfer':
-                calc(result.transfer)
-                break
-            case 'sale':
-                calc(result.sale)
-                break
+        let row = result[doc.type]
+        if (row === undefined) {
+            row = new ResultRow(doc.type)
+            result[doc.type] = row
         }
-
-        function calc(res) {
-            res.doccou++
-            doc.lines.forEach(line => { // цикл по строкам документа
-                res.linecou++
-                res.amount += line.price * line.qty
-                // у строк перемещений нет цены, поэтому полчим NaN
-            })
-        }
-        
+        row.doccou++
+        doc.lines.forEach(line => { // цикл по строкам документа
+            row.linecou++
+            row.amount += line.price * line.qty // у строк перемещений нет цены, поэтому получим NaN
+        })
     },
-    {   // инициализируем аккумулятор-результат
-        purch: { amount: 0, doccou: 0, linecou: 0 },
-        transfer: { amount: 0, doccou: 0, linecou: 0 },
-        sale: { amount: 0, doccou: 0, linecou: 0 }
-    }
+    {} // инициализируем аккумулятор - Map не подходит, так как он не сериализуется
 )
-out('purch', res.purch)
-out('transfer', res.transfer)
-out('sale', res.sale)
+
+let r: any
+for (r of Object.values(res)) {
+    console.log('\n=======================================' + 
+        '\ndocuments count "' + r.doctype + '" = ' + r.doccou +
+        '\namount total = ' + r.amount +
+        '\namount per document = ' + r.amount / r.doccou +
+        '\nlines per document = ' + r.linecou / r.doccou
+    )
+}
 
 const [ok, msg] = db.add_mut(
     {
-        type: 'sale',
-        key: 'sale.XXX',
+        type: 'post.sale',
+        key: 'post.sale.XXX',
         date: '2020-01-21',
         person: db.get_top('person.0').id,
         stock: db.get_top('stock.0').id,
@@ -58,14 +58,5 @@ if (ok) {
     console.log('\nError adding sale: ' + msg)
     console.log('Run "sample2_invent_turnover_balance.ts" to adding purch')
 }
-//db.flush(false, false)
-db.flush()
-
-function out(doctype, res) {
-    console.log('\n=======================================' + 
-        '\n' + doctype + ' documents count = ' + res.doccou +
-        '\namount total = ' + res.amount +
-        '\namount per document = ' + res.amount / res.doccou +
-        '\nlines per document = ' + res.linecou / res.doccou
-    )
-}
+db.flush(false, false)
+//db.flush()

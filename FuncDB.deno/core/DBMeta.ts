@@ -28,6 +28,11 @@ export interface IDBCore {
         result: Result,
         no_cache?: boolean,
     ): Result;
+    reduce_top(
+        filter: (result: Result, doc: Document) => boolean, 
+        reducer: (result: Result, doc: Document) => void,
+        result: Result,
+    ): Result;
     get(id: string, no_scan?: boolean): Document | undefined
     get_top(key: string, no_scan?: boolean): Document | undefined
     add_mut(doc: Document): [boolean, string?]

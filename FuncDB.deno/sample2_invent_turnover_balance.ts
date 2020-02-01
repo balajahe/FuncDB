@@ -1,5 +1,5 @@
-import { DBCore } from './core/DBCore.ts' 
-const db = DBCore.open('./database/')
+import { ERPCore } from './core/ERPCore.ts'
+const db = ERPCore.open('./database/')
 
 class ResultRow { // строка результирующей таблицы
     nomen_type = ''
@@ -7,10 +7,15 @@ class ResultRow { // строка результирующей таблицы
     person_type = ''
     debit_qty = 0
     credit_qty = 0
+    constructor(nomen, stock, person) {
+        this.nomen_type = nomen
+        this.stock_type = stock
+        this.person_type = person
+    }
 }
 
 const res = db.reduce(
-    (_, doc) => doc.type == 'purch' || doc.type == 'sale',
+    (_, doc) => doc.type === 'post.purch' || doc.type === 'post.sale',
     (result, doc) => {
         doc.lines.forEach((line) => {
             // типы получаем подзапросами к базе (реально берутся из кэша)
@@ -21,18 +26,15 @@ const res = db.reduce(
             const key = nomen_type + stock_type + person_type
             let row = result[key]
             if (row === undefined) {
-                row = new ResultRow()
-                row.nomen_type = nomen_type
-                row.stock_type = stock_type
-                row.person_type = person_type
+                row = new ResultRow(nomen_type, stock_type, person_type)
                 result[key] = row
             }
             
             switch (doc.type) {
-                case 'purch':
+                case 'post.purch':
                     row.debit_qty += line.qty
                     break
-                case'sale':
+                case'post.sale':
                     row.credit_qty += line.qty
                     break
             }
@@ -63,8 +65,8 @@ for (const key of keys) {
 
 db.add_mut(
     {
-        type: 'purch',
-        key: 'purch.XXX',
+        type: 'post.purch',
+        key: 'post.purch.XXX',
         date: '2020-01-21',
         person: db.get_top('person.0').id,
         stock: db.get_top('stock.0').id,

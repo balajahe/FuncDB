@@ -1,4 +1,4 @@
-import { DBCore } from './core/DBCore.ts'
+import { ERPCore } from './core/ERPCore.ts'
 import { DBMeta } from './core/DBMeta.ts'
 
 const dbpath = './database/'
@@ -6,11 +6,11 @@ const dbpath = './database/'
 let personcou = 5000
 let nomencou = 3000
 let stockcou = 50
-let doccou = 100000
+let doccou = 10000
 let maxlinecou = 50
 const mut_scale = 1/10
 
-let db: DBCore
+let db: ERPCore
 let ts: number
 
 try {
@@ -20,18 +20,22 @@ Deno.mkdirSync(dbpath)
 Deno.openSync(dbpath + DBMeta.data_immut, 'w').close()
 Deno.openSync(dbpath + DBMeta.data_mut_current, 'w').close()
 
-db = DBCore.open(dbpath)
+// генерируем иммутабельные данные
+db = ERPCore.open(dbpath)
 gen_file()
 db.flush(true) // кэш не записываем, так как мы подменяем файл
 Deno.renameSync(dbpath + DBMeta.data_mut_current, dbpath + DBMeta.data_immut)
 Deno.openSync(dbpath + DBMeta.data_mut_current, 'w').close()
 
+// генерируем мутабельные данные
 personcou = Math.floor(personcou * mut_scale)
 nomencou = Math.floor(nomencou * mut_scale)
 stockcou = Math.floor(stockcou * mut_scale)
 doccou = Math.floor(doccou * mut_scale)
-db = DBCore.open(dbpath)
+db = ERPCore.open(dbpath)
 gen_file()
+// генерируем открытые (неразнесенные) документы
+gen_docs(['open.purch', 'open.sale'])
 db.flush() // база готова вместе с кэшем
 
 function gen_file() {
@@ -39,7 +43,7 @@ function gen_file() {
     gen_persons()
     gen_nomens()
     gen_stocks()
-    gen_docs()
+    gen_docs(['post.purch', 'post.transfer', 'post.sale'])
 }
 
 // persons (partners)
@@ -90,10 +94,9 @@ async function gen_stocks() {
     } 
 }
 
-// all documents: purch, transfer, sale
-async function gen_docs() {
+// all posted documents: purch, transfer, sale
+async function gen_docs(doc_types: string[]) {
     const date = new Date().toISOString().substr(0,10)
-    const doc_types = ['purch', 'transfer', 'sale']
     let couall = 0
     let cou = 0
     for (let doctype of doc_types) {
@@ -107,7 +110,7 @@ async function gen_docs() {
                     date: date,
                     person: 'person.' + irand(0, personcou-1) + '^' + ts
                 }
-            if (doctype !== 'transfer') {
+            if (doctype !== 'post.transfer') {
                 doc.stock = 'stock.' + irand(0, stockcou-1) + '^' + ts
             } else {
                 doc.stock1 = 'stock.' + irand(0, stockcou-1) + '^' + ts
@@ -118,9 +121,9 @@ async function gen_docs() {
                 const line: any = 
                     {
                         nomen: 'nomen.' + irand(0, nomencou-1) + '^' + ts,
-                        qty: doctype === 'purch' ? irand(1, 30*10) : irand(1, 30)
+                        qty: doctype === 'post.purch' ? irand(1, 30*10) : irand(1, 30)
                     }
-                if (doctype !== 'transfer') {
+                if (doctype !== 'post.transfer') {
                     line.price = frand(100, 300)
                 }
                 doc.lines.push(line)
@@ -131,7 +134,7 @@ async function gen_docs() {
                 couall++
                 cou++
                 if (cou === 1000) {
-                    console.log('\ngenerating ' + doctype + ' docs in-memory: ' + i + '            \x1b[2A')
+                    console.log('\ngenerating "' + doctype + '" docs in-memory: ' + i + '            \x1b[2A')
                     cou = 0
                 }
             }
