@@ -3,12 +3,10 @@ import { DBCore } from './DBCore.ts'
 
 export class ERPCore extends DBCore implements IERPCore {
     static open(dbpath: string, no_cache: boolean = false): ERPCore {
-        const db = new ERPCore(dbpath)
-        db.init()
-        return db
+        return <ERPCore>new ERPCore(dbpath).init()
     }
    
-    bal_key_from_ids(ids: string[]): string {
+    balkey_from_ids(ids: string[]): string {
         let key = 'bal'
         for (const id of ids) {
             key += '|' + this.key_from_id(id)
@@ -37,7 +35,7 @@ export class ERPCore extends DBCore implements IERPCore {
     }
 
     get_bal(ids: string[]): Balance {
-        const key = this.bal_key_from_ids(ids)
+        const key = this.balkey_from_ids(ids)
         return this.get_bal_by_key(key)
     }
 }

@@ -17,5 +17,5 @@ export interface Balance {
 export interface IERPCore extends IDBCore {
     get_bal(ids: string[]): Balance
     get_bal_by_key(key: string): Balance
-    bal_key_from_ids(ids: string[]): string
+    balkey_from_ids(ids: string[]): string
 }

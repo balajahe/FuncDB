@@ -1,7 +1,8 @@
 import { Document, DocClass, IERPCore } from '../core/ERPMeta.ts'
 
 export default class OpenSale extends DocClass {
-    static after_add(doc: Document, db: IERPCore): void {
+
+    static on_add(doc: Document, db: IERPCore): [boolean, string?] {
         doc.lines.forEach(line => {
             const bal = db.get_bal([line.nomen, doc.stock])
             line.from = bal.id
@@ -10,5 +11,6 @@ export default class OpenSale extends DocClass {
             bal.oval -= line.qty * line.cost
             db.add_mut(bal)
         })
+        return [true,]
     }
 }

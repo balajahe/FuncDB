@@ -52,7 +52,7 @@ console.log('===================================================================
 let cou = 0
 for (const key of keys) {
     const row = res[key]
-    cou++; //if (cou > 20) { console.log(' < tail skipped >'); break }
+    cou++; //if (cou > 30) { console.log(' < tail skipped >'); break }
     console.log('' +
         row.nomen_type.padEnd(16) + ' | ' +
         row.stock_type.padEnd(16) + ' | ' +
