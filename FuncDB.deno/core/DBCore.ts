@@ -30,17 +30,29 @@ class Data {
     get cache_reduce(): Map<string, Result> {
         return this.all[this.all.length-1].cache_reduce
     }
-    tran_new() {
+    tran_begin() {
         this.all.push(new Transaction())
     }
     tran_commit() {
         if (this.all.length > 1) {
             const tran = this.all.pop()
+            for (const val of tran.current) {
+                this.current.push(val)
+            }
+            for (const [key, val] of tran.cache_doc.entries()) {
+                this.cache_doc.set(key, val)
+            }
+            for (const [key, val] of tran.cache_top.entries()) {
+                this.cache_top.set(key, val)
+            }
+            for (const [key, val] of tran.cache_reduce.entries()) {
+                this.cache_reduce.set(key, val)
+            }
         } else throw('ERROR: Transaction is not started !')
     }
     tran_rollback() {
         if (this.all.length > 1) {
-            const tran = this.all.pop()
+            this.all.pop()
         } else throw('ERROR: Transaction is not started !')
     }
 }
@@ -233,10 +245,14 @@ export class DBCore implements IDBCore {
                 doc.id = doc.key + '^' + Date.now()
             }
             attach_doc_class(doc)
+            this.tran_begin()
+            this.data.current.push(doc)
+            this.to_cache(doc)
             const [ok, msg] = doc.class.on_add(doc, this)
             if (ok) {
-                this.data.current.push(doc)
-                this.to_cache(doc)
+                this.tran_commit()
+            } else {
+                this.tran_rollback()
             }
             return [ok, msg]
         } catch(e) {
@@ -265,8 +281,8 @@ export class DBCore implements IDBCore {
         return id.slice(0, id.indexOf('^'))
     }
 
-    tran_new() {
-        this.data.tran_new()
+    tran_begin() {
+        this.data.tran_begin()
     }
 
     tran_commit() {

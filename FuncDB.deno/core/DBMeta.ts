@@ -10,6 +10,12 @@ export const enum DBMeta {
     cache_reduce = 'cache_reduce.json'
 }
 
+export abstract class DocClass {
+    static cache_doc = false
+    static cache_top = false
+    static on_add(doc: Document, db: IDBCore): [boolean, string?] { return [true,] }
+}
+
 export interface IDBCore {
     reduce(
         filter: (result: Result, doc: Document) => boolean, 
@@ -27,16 +33,10 @@ export interface IDBCore {
     add_mut(doc: Document): [boolean, string?]
     doc_class(type: string): DocClass
     key_from_id(id: string): string
-    tran_new(): void
+    tran_begin(): void
     tran_commit(): void
     tran_rollback(): void
     flush(no_cache?: boolean, compact?: boolean): void
-}
-
-export abstract class DocClass {
-    static cache_doc = false
-    static cache_top = false
-    static on_add(doc: Document, db: IDBCore): [boolean, string?] { return [true,] }
 }
 
 export interface IDBLogger {

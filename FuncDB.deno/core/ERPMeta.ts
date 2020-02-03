@@ -6,6 +6,7 @@ export interface Balance {
     type?: string, 
     key: string, 
     id?: string, 
+    from?: string,
     qty: number, // остаток в наличии
     val: number,
     iqty: number, // ожидаемый приход

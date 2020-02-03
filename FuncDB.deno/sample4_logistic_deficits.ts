@@ -19,7 +19,7 @@ const res = db.reduce_top(
         }
         row.in_stock = doc.qty
         row.expected = doc.iqty
-        row.needs = -doc.oqty
+        row.needs = doc.oqty
     },
     {}
 )
@@ -37,7 +37,7 @@ for (const key of keys) {
         row.in_stock + ' | ' +            
         row.expected + ' | ' +                        
         row.needs + ' | ' +            
-        (row.needs - row.in_stock - row.expected)          
+        (row.in_stock + row.expected + row.needs)          
     )
 }
 db.flush()

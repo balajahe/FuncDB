@@ -7,6 +7,7 @@ export default class PostPurch extends DocClass {
             const bal = db.get_bal([line.nomen, doc.stock])
             bal.qty += line.qty
             bal.val += line.qty * line.price
+            bal.from = doc.id
             db.add_mut(bal)
         })
         return [true,]

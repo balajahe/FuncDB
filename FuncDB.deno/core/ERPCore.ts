@@ -15,12 +15,15 @@ export class ERPCore extends DBCore implements IERPCore {
     }
 
     get_bal_by_key(key: string): Balance {
-        let bal = this.get_top(key, true) 
-        if (bal === undefined) {
+        let bal = this.get_top(key, true)
+        if (bal !== undefined) {
+            bal = Object.assign({}, bal)
+        } else {
             bal = {
                 type: 'bal',
                 key: key,
                 id: undefined,
+                from: undefined,
                 qty: 0,
                 val: 0,
                 iqty: 0,
@@ -28,14 +31,11 @@ export class ERPCore extends DBCore implements IERPCore {
                 oqty: 0,
                 oval: 0,
             }
-        } else {
-            bal = Object.assign({}, bal)
         }
         return bal
     }
 
     get_bal(ids: string[]): Balance {
-        const key = this.balkey_from_ids(ids)
-        return this.get_bal_by_key(key)
+        return this.get_bal_by_key(this.balkey_from_ids(ids))
     }
 }

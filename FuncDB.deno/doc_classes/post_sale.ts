@@ -3,7 +3,6 @@ import { Document, DocClass, IERPCore } from '../core/ERPMeta.ts'
 export default class PostSale extends DocClass {
     
     static on_add(doc: Document, db: IERPCore): [boolean, string?] {
-        db.tran_new()
         let err = ''
         doc.lines.forEach(line => {
             const balkey = [line.nomen, doc.stock]
@@ -13,17 +12,12 @@ export default class PostSale extends DocClass {
                 line.cost = (bal.val + bal.ival) / (bal.qty + bal.iqty) // себестоимость в момент списания с учетом ожидаемых приходов
                 bal.qty -= line.qty
                 bal.val -= line.qty * line.cost
+                bal.from = doc.id
                 db.add_mut(bal)
             } else {
                 err += '\n"' + balkey + '": requested ' + line.qty + ' but balance is only ' + bal.qty
             }
         })
-        if (err === '') {
-            db.tran_commit()
-            return [true,]
-        } else {
-            db.tran_rollback()
-            return [false, err] 
-        }
+        return err === '' ? [true,] : [false, err] 
     }
 }

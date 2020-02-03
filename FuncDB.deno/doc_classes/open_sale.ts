@@ -9,6 +9,7 @@ export default class OpenSale extends DocClass {
             line.cost = (bal.val + bal.ival) / (bal.qty + bal.iqty) // себестоимость в момент списания с учетом ожидаемых приходов
             bal.oqty -= line.qty
             bal.oval -= line.qty * line.cost
+            bal.from = doc.id
             db.add_mut(bal)
         })
         return [true,]
