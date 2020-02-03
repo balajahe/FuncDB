@@ -109,7 +109,7 @@ export class DBCore implements IDBCore {
             db.log.print_final()
         }
 
-        const db = new DBReaderWithClass(this.dbpath + DBMeta.data_mut_current, 'init')
+        const db = new DBReaderWithClass(this.dbpath + DBMeta.data_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
             this.to_cache(doc, db.log)
             this.data.current.push(doc)
@@ -143,7 +143,7 @@ export class DBCore implements IDBCore {
                 this.data.cache_reduce.set(key, JSON.stringify(result))
             }
         }
-        const log = new Log('in-memory/mut_current', 'memory')
+        const log = new Log('in-memory/data_current', 'memory')
         for (let doc of this.data.current) {
             log.inc_total()
             reduce1(doc, log)
@@ -297,13 +297,13 @@ export class DBCore implements IDBCore {
         console.log('\nflushing database to disk...')
 
         let cou = 0 
-        let db = DBWriterSync.rewrite(this.dbpath + DBMeta.data_mut_current)
+        let db = DBWriterSync.rewrite(this.dbpath + DBMeta.data_current)
         for (const doc of this.data.current) {
             db.add(doc, compact)
             cou++
         }
         db.close()
-        console.log('    mut_current: ' + cou)
+        console.log('    data_current: ' + cou)
 
         if (!no_cache) {
             cou = 0

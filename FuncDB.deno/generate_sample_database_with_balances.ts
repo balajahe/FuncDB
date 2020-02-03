@@ -18,14 +18,14 @@ try {
 } catch(_) {}
 Deno.mkdirSync(dbpath)
 Deno.openSync(dbpath + DBMeta.data_immut, 'w').close()
-Deno.openSync(dbpath + DBMeta.data_mut_current, 'w').close()
+Deno.openSync(dbpath + DBMeta.data_current, 'w').close()
 
 // генерируем иммутабельные данные
 db = ERPCore.open(dbpath)
 gen_file()
 db.flush(true) // кэш не записываем, так как мы подменяем файл
-Deno.renameSync(dbpath + DBMeta.data_mut_current, dbpath + DBMeta.data_immut)
-Deno.openSync(dbpath + DBMeta.data_mut_current, 'w').close()
+Deno.renameSync(dbpath + DBMeta.data_current, dbpath + DBMeta.data_immut)
+Deno.openSync(dbpath + DBMeta.data_current, 'w').close()
 
 // генерируем мутабельные данные
 personcou = Math.floor(personcou * mut_scale)
@@ -121,7 +121,7 @@ async function gen_docs(doc_types: string[]) {
                 const line: any = 
                     {
                         nomen: 'nomen.' + irand(0, nomencou-1) + '^' + ts,
-                        qty: doctype === 'post.purch' ? irand(1, 30*10) : irand(1, 30)
+                        qty: doctype === 'post.purch' ? irand(1, 30*5) : irand(1, 30)
                     }
                 if (doctype !== 'post.transfer') {
                     line.price = frand(100, 300)

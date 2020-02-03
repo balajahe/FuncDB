@@ -28,11 +28,11 @@ const res = db.reduce(
 
 let r: any
 for (r of Object.values(res)) {
-    console.log('\n=======================================' + 
-        '\ndocuments count "' + r.doctype + '" = ' + r.doccou +
-        '\namount total = ' + r.amount +
-        '\namount per document = ' + r.amount / r.doccou +
-        '\nlines per document = ' + r.linecou / r.doccou
+    console.log('\n==========================================' + 
+        '\n "' + r.doctype + '" documents count = ' + r.doccou +
+        '\n amount total = ' + r.amount +
+        '\n amount per document = ' + r.amount / r.doccou +
+        '\n lines per document = ' + r.linecou / r.doccou
     )
 }
 

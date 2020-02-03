@@ -6,6 +6,8 @@ class ResultRow {
     in_stock = 0
     expected = 0
     needs = 0
+    deficit = 0
+    p_deficit = 0
     constructor(key) { this.bal_key = key }
 }
 
@@ -20,24 +22,32 @@ const res = db.reduce_top(
         row.in_stock = doc.qty
         row.expected = doc.iqty
         row.needs = doc.oqty
+        row.deficit = row.in_stock + row.expected + row.needs
+        row.p_deficit = -row.deficit / (row.in_stock + row.expected) * 100
     },
     {}
 )
-const keys = Object.keys(res)
-keys.sort()
 
-console.log('\n balance key         | in stock | expected | needs | deficit ')
-console.log('============================================================')
+let rows: any[] = Object.values(res)
+rows.sort((a, b) => b.p_deficit - a.p_deficit)
+
+console.log('\n balance key          | in stock | expected | needs    | deficit  | deficit %')
+console.log('=============================================================================')
 let cou = 0
-for (const key of keys) {
-    const row = res[key]
+for (const row of rows) {
     cou++; if (cou > 30) { console.log(' < tail skipped >'); break }
-    console.log('' +
+    console.log(' ' +
         row.bal_key.slice(4).padEnd(20) + ' | ' +
-        row.in_stock + ' | ' +            
-        row.expected + ' | ' +                        
-        row.needs + ' | ' +            
-        (row.in_stock + row.expected + row.needs)          
+        f(row.in_stock) + ' | ' +            
+        f(row.expected) + ' | ' +                        
+        f(row.needs) + ' | ' +            
+        f(row.deficit) + ' | ' +            
+        f(row.p_deficit)         
     )
 }
 db.flush()
+
+
+function f(n: number): string {
+    return n.toFixed().padStart(8)
+}

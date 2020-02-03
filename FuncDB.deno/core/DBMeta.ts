@@ -3,7 +3,7 @@ export type Result = any
 
 export const enum DBMeta {
     data_immut = 'data_immut_001.json',
-    data_mut_current = 'data_mut_current.json',
+    data_current = 'data_current.json',
     delim = 1,
     cache_doc = 'cache_doc.json',
     cache_top = 'cache_top.json',

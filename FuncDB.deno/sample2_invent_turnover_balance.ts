@@ -47,19 +47,19 @@ const res = db.reduce(
 const keys = Object.keys(res)
 keys.sort()
 
-console.log('\n nomencl. type   | stock type       | person type      | + qty    | - qty   | balance')
-console.log('======================================================================================')
+console.log('\n nomenclature type  | stock type         | person type        | + qty              | - qty              | balance            ')
+console.log('=============================================================================================================================')
 let cou = 0
 for (const key of keys) {
     const row = res[key]
     cou++; //if (cou > 30) { console.log(' < tail skipped >'); break }
-    console.log('' +
-        row.nomen_type.padEnd(16) + ' | ' +
-        row.stock_type.padEnd(16) + ' | ' +
-        row.person_type.padEnd(16) + ' | ' +
-        row.debit_qty + ' | ' +            
-        row.credit_qty + ' | ' +            
-        (row.debit_qty - row.credit_qty)          
+    console.log(' ' +
+        row.nomen_type.padEnd(18) + ' | ' +
+        row.stock_type.padEnd(18) + ' | ' +
+        row.person_type.padEnd(18) + ' | ' +
+        f(row.debit_qty) + ' | ' +            
+        f(row.credit_qty) + ' | ' +            
+        f((row.debit_qty - row.credit_qty))         
     )
 }
 
@@ -81,3 +81,8 @@ db.add_mut(
 )
 console.log('\n1 purch document added, run sample again')
 db.flush()
+
+
+function f(n: number): string {
+    return n.toString().padStart(18)
+}

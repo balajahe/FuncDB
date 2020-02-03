@@ -32,18 +32,23 @@ const res = db.reduce(
 const keys = Object.keys(res)
 keys.sort()
 
-console.log('\n nomencl. name  | qty  | sales revenue      | costs              | sales margin       ')
-console.log('======================================================================================')
+console.log('\n nomenclature name  | qty                | sales revenue      | costs              | sales margin       ')
+console.log('========================================================================================================')
 let cou = 0
 for (const key of keys) {
     const row = res[key]
     cou++; if (cou > 30) { console.log(' < tail skipped >'); break }
-    console.log('' +
-        row.nomen_name.padEnd(15) + ' | ' +
-        row.qty + ' | ' +            
-        row.revenue + ' | ' +            
-        row.cost + ' | ' +                        
-        (row.revenue - row.cost)          
+    console.log(' ' +
+        row.nomen_name.padEnd(18) + ' | ' +
+        f(row.qty) + ' | ' +            
+        f(row.revenue) + ' | ' +            
+        f(row.cost) + ' | ' +                        
+        f((row.revenue - row.cost))          
     )
 }
 db.flush()
+
+
+function f(n: number): string {
+    return n.toString().padStart(18)
+}
