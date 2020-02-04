@@ -10,7 +10,7 @@ class ResultRow { // строка результирующей таблицы
 }
 
 const res = db.reduce(
-    (_, doc) => doc.type.startsWith('post.') || doc.type.startsWith('open.'),
+    (_, doc) => doc.type.startsWith('purch') || doc.type.startsWith('transfer') || doc.type.startsWith('sale'),
     (result, doc) => {
         let row = result[doc.type]
         if (row === undefined) {
@@ -38,8 +38,8 @@ for (r of Object.values(res)) {
 
 const [ok, msg] = db.add_mut(
     {
-        type: 'post.sale',
-        key: 'post.sale.XXX',
+        type: 'sale.post',
+        key: 'sale.post.XXX',
         date: '2020-01-21',
         person: db.get_top('person.0').id,
         stock: db.get_top('stock.0').id,

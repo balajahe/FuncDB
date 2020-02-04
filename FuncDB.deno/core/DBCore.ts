@@ -257,26 +257,24 @@ export class DBCore implements IDBCore {
             return [ok, msg]
         } catch(e) {
             console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
-            console.log('Process is aborted !')
             Deno.exit()
         }
     }
 
     private to_cache(doc: Document, log?: Log) {
-        if (doc.class.cache_doc) {
-            if (!this.data.cache_doc.has(doc.id)) log?.inc_processed()
+        if (doc.class.cache_doc && !this.data.cache_doc.has(doc.id)) {
             this.data.cache_doc.set(doc.id, doc)
+            log?.inc_processed()
         }
-        if (doc.class.cache_top) {
-            if (!this.data.cache_top.has(doc.key)) log?.inc_processed1()
+        if (doc.class.cache_top && !this.data.cache_top.has(doc.key)) {
             this.data.cache_top.set(doc.key, doc)
+            log?.inc_processed1()
         }
     }
 
     doc_class(type: string): DocClass {
         return get_doc_class(type)
     }
-
     key_from_id(id: string): string {
         return id.slice(0, id.indexOf('^'))
     }
@@ -284,11 +282,9 @@ export class DBCore implements IDBCore {
     tran_begin() {
         this.data.tran_begin()
     }
-
     tran_commit() {
         this.data.tran_commit()
     }
-
     tran_rollback() {
         this.data.tran_rollback()
     }

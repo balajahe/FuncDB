@@ -22,7 +22,7 @@ Deno.openSync(dbpath + DBMeta.data_current, 'w').close()
 
 // генерируем иммутабельные данные
 db = ERPCore.open(dbpath)
-gen_file()
+gen_file(['purch.post', 'transfer.post', 'sale.post'])
 db.flush(true) // кэш не записываем, так как мы подменяем файл
 Deno.renameSync(dbpath + DBMeta.data_current, dbpath + DBMeta.data_immut)
 Deno.openSync(dbpath + DBMeta.data_current, 'w').close()
@@ -33,17 +33,18 @@ nomencou = Math.floor(nomencou * mut_scale)
 stockcou = Math.floor(stockcou * mut_scale)
 doccou = Math.floor(doccou * mut_scale)
 db = ERPCore.open(dbpath)
-gen_file()
+gen_file(['purch.post', 'transfer.post', 'sale.post'])
+
 // генерируем открытые (неразнесенные) документы
-gen_docs(['open.purch', 'open.sale'])
+gen_docs(['purch.open', 'sale.open'])
 db.flush() // база готова вместе с кэшем
 
-function gen_file() {
+function gen_file(doc_types: string[]) {
     ts = Date.now()
     gen_persons()
     gen_nomens()
     gen_stocks()
-    gen_docs(['post.purch', 'post.transfer', 'post.sale'])
+    gen_docs(doc_types)
 }
 
 // persons (partners)
@@ -110,7 +111,7 @@ async function gen_docs(doc_types: string[]) {
                     date: date,
                     person: 'person.' + irand(0, personcou-1) + '^' + ts
                 }
-            if (doctype !== 'post.transfer') {
+            if (!doctype.startsWith('transfer')) {
                 doc.stock = 'stock.' + irand(0, stockcou-1) + '^' + ts
             } else {
                 doc.stock1 = 'stock.' + irand(0, stockcou-1) + '^' + ts
@@ -121,9 +122,9 @@ async function gen_docs(doc_types: string[]) {
                 const line: any = 
                     {
                         nomen: 'nomen.' + irand(0, nomencou-1) + '^' + ts,
-                        qty: doctype === 'post.purch' ? irand(1, 30*5) : irand(1, 30)
+                        qty: doctype === 'purch.post' ? irand(1, 30*5) : irand(1, 30)
                     }
-                if (doctype !== 'post.transfer') {
+                if (!doctype.startsWith('transfer')) {
                     line.price = frand(100, 300)
                 }
                 doc.lines.push(line)

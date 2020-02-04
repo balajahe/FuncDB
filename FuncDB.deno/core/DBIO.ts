@@ -2,14 +2,14 @@ import { BufReader } from 'https://deno.land/std/io/bufio.ts'
 import { Document, DBMeta, IDBLogger } from './DBMeta.ts'
 
 const read_buf_size = 40960
-const chunk_buf_size = 409600 // надо сделать потоковый парсер чанка, иначе Result может не влезть
+const chunk_buf_size = 409600 // надо сделать авторесайз чанка, иначе Result может когда-нибудь не влезть
 const write_buf_size = 4096 
 // при записи через File.write() невозможно указать буфер отличный от стандартного, 
 // а бOльшие буфера просто молча обрезаются и не записываются в файл (дефект Deno)
 
 export interface IDBReader {
-    next?(): Document | false
-    next?(): Promise<Document | false> 
+    next(): Document | false | Promise<Document | false> 
+    readonly log?: IDBLogger
 }   
 
 export class DBReaderSync implements IDBReader {

@@ -15,7 +15,7 @@ class ResultRow { // строка результирующей таблицы
 }
 
 const res = db.reduce(
-    (_, doc) => doc.type === 'post.purch' || doc.type === 'post.sale',
+    (_, doc) => doc.type === 'purch.post' || doc.type === 'sale.post',
     (result, doc) => {
         doc.lines.forEach((line) => {
             // типы получаем подзапросами к базе (реально берутся из кэша)
@@ -31,10 +31,10 @@ const res = db.reduce(
             }
             
             switch (doc.type) {
-                case 'post.purch':
+                case 'purch.post':
                     row.debit_qty += line.qty
                     break
-                case'post.sale':
+                case'sale.post':
                     row.credit_qty += line.qty
                     break
             }
@@ -47,7 +47,7 @@ const res = db.reduce(
 const keys = Object.keys(res)
 keys.sort()
 
-console.log('\n nomenclature type  | stock type         | person type        | + qty              | - qty              | balance            ')
+console.log('\n nomenclature type  | stock type         | person type        | purchased          | sold               | balance            ')
 console.log('=============================================================================================================================')
 let cou = 0
 for (const key of keys) {
@@ -65,8 +65,8 @@ for (const key of keys) {
 
 db.add_mut(
     {
-        type: 'post.purch',
-        key: 'post.purch.XXX',
+        type: 'purch.post',
+        key: 'purch.post.XXX',
         date: '2020-01-21',
         person: db.get_top('person.0').id,
         stock: db.get_top('stock.0').id,
