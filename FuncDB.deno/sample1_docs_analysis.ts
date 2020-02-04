@@ -46,7 +46,7 @@ const [ok, msg] = db.add_mut(
         lines: [
             {
                 nomen: db.get_top('nomen.0').id,
-                qty: 20,
+                qty: 2000,
                 price: 295.5228788368553
             }
         ]

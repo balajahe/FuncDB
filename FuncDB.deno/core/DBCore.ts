@@ -131,7 +131,7 @@ export class DBCore implements IDBCore {
         //console.log('\nreduce() started...\n' + key)
         const cached = this.data.cache_reduce.get(key)
         if (cached !== undefined) {
-            console.log('    immutable part of result taken from cache')
+            console.log('    immutable part of result taken from cache !')
             result = JSON.parse(cached)
         } else {
             const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut, 'file')
@@ -144,9 +144,11 @@ export class DBCore implements IDBCore {
             }
         }
         const log = new Log('in-memory/data_current', 'memory')
-        for (let doc of this.data.current) {
-            log.inc_total()
-            reduce1(doc, log)
+        for (const tran of this.data.all) {
+            for (const doc of tran.current) {
+                log.inc_total()
+                reduce1(doc, log)
+            }
         }
         log.print_final()
         return result
@@ -170,15 +172,29 @@ export class DBCore implements IDBCore {
         result: Result,
     ): Result {
         console.log('\nreduce_top() started...')
-        for (let doc of this.data.cache_top.values()) {
-            try {
-                if(filter(result, doc)) {
-                    reducer(result, doc)
+        const log = new Log('in-memory/cache_top', 'memory')
+        for (let i = 0; i < this.data.all.length; i++) {
+            for (let doc of this.data.all[i].cache_top.values()) {
+                for (let j = i + 1; j < this.data.all.length; j++) { // ищем дубликаты в транзакциях ниже по стеку
+                    const tran = this.data.all[j]
+                    const doc1 = tran.cache_top.get(doc.key)
+                    if (doc1 !== undefined) {
+                        doc = doc1
+                    }
                 }
-            } catch(e) {
-                console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
+                log.inc_total()
+                try {
+                    if(filter(result, doc)) {
+                        reducer(result, doc)
+                        log.inc_processed()
+                    }
+                } catch(e) {
+                    console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
+                    log.inc_processerror()
+                }
             }
         }
+        log.print_final()
         return result
     }
 
@@ -213,7 +229,8 @@ export class DBCore implements IDBCore {
 
     get_top(key: string, no_scan: boolean = false): Document | undefined {
         let cached: Document
-        for (const tran of this.data.all) {
+        for (let i = this.data.all.length - 1; i >= 0; i--) { // обрабатываем транзакции в обратном порядке
+            const tran = this.data.all[i]
             cached = tran.cache_top.get(key)
             if (cached !== undefined) {
                 return cached

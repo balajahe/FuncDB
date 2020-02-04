@@ -73,7 +73,7 @@ db.add_mut(
         lines: [
             {
                 nomen: db.get_top('nomen.0').id,
-                qty: 10000,
+                qty: 5000,
                 price: 116.62545127448834
             }
        ]
