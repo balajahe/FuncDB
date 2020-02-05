@@ -1,5 +1,5 @@
 import { ERPCore } from './core/ERPCore.ts'
-const db = ERPCore.open('./database/')
+const db = new ERPCore('./database/')
 
 class ResultRow {
     key = ''
@@ -54,7 +54,7 @@ for (const row of rows) {
         f(row.p_deficit)         
     )
 }
-db.flush()
+db.flush_sync()
 
 
 function f(n: number): string {

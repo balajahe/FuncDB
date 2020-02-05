@@ -11,7 +11,7 @@ export default class SaleOpen extends DocClass {
             //bal.val -= line.qty * line.cost
             bal.val = 0
             bal.from = doc.id
-            db.add_mut(bal)
+            db.add(bal)
         })
         return [true,]
     }

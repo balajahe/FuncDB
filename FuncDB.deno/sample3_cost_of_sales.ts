@@ -1,5 +1,5 @@
 import { ERPCore } from './core/ERPCore.ts'
-const db = ERPCore.open('./database/')
+const db = new ERPCore('./database/')
 
 class ResultRow { // строка результирующей таблицы
     nomen_name = ''
@@ -46,7 +46,7 @@ for (const key of keys) {
         f((row.revenue - row.cost))          
     )
 }
-db.flush()
+db.flush_sync()
 
 
 function f(n: number): string {

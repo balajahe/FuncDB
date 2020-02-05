@@ -1,10 +1,9 @@
 import { BalType, Balance, IERPCore } from './ERPMeta.ts' 
-import { DBCore } from './DBCore.ts'
+import { DBCore, Document, Result } from './DBCore.ts'
+
+export { Document, Result }
 
 export class ERPCore extends DBCore implements IERPCore {
-    static open(dbpath: string, no_cache: boolean = false): ERPCore {
-        return <ERPCore>new ERPCore(dbpath).init()
-    }
    
     balkey_from_ids(type: BalType, ids: string[]): string {
         let key = type
@@ -15,7 +14,7 @@ export class ERPCore extends DBCore implements IERPCore {
     }
 
     get_bal_by_key(key: string): Balance {
-        let bal = this.get_top(key, true)
+        let bal = this.get_top(key, false)
         if (bal !== undefined) {
             bal = Object.assign({}, bal)
         } else {

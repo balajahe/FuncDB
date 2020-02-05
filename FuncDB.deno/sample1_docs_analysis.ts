@@ -1,5 +1,5 @@
 import { ERPCore } from './core/ERPCore.ts'
-const db = ERPCore.open('./database/')  
+const db = new ERPCore('./database/')
 
 class ResultRow { // строка результирующей таблицы
     doctype = ''
@@ -36,7 +36,7 @@ for (r of Object.values(res)) {
     )
 }
 
-const [ok, msg] = db.add_mut(
+const [ok, msg] = db.add(
     {
         type: 'sale.post',
         key: 'sale.post.XXX',
@@ -58,5 +58,5 @@ if (ok) {
     console.log('\nError adding sale: ' + msg)
     console.log('Run "sample2_invent_turnover_balance.ts" to adding purch')
 }
-db.flush(false, false)
-//db.flush()
+await db.flush_sync(true, false)
+//db.flush_sync()

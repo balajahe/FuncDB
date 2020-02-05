@@ -1,4 +1,4 @@
-import { BufReader } from 'https://deno.land/std/io/bufio.ts'
+import { BufReader, BufWriter } from 'https://deno.land/std/io/bufio.ts'
 import { Document, DBMeta, IDBLogger } from './DBMeta.ts'
 
 const read_buf_size = 40960
@@ -10,18 +10,19 @@ const write_buf_size = 4096
 export interface IDBReader {
     next(): Document | false | Promise<Document | false> 
     readonly log?: IDBLogger
-}   
+}  
 
 export class DBReaderSync implements IDBReader {
     private file: Deno.File
     readonly log?: IDBLogger
     private delim: number = DBMeta.delim
+    private decoder = new TextDecoder()
+
     private buf = new Uint8Array(read_buf_size)
     private p1 = 0
     private p2 = -1
     private buf3 = new Uint8Array(chunk_buf_size)
     private p3 = 0
-    private decoder = new TextDecoder()
 
     constructor(fpath: string, log?: IDBLogger) {
         this.file = Deno.openSync(fpath, 'r')
@@ -88,8 +89,8 @@ export class DBReaderSync implements IDBReader {
 export class DBReaderAsync implements IDBReader {
     private file: Deno.File
     readonly log?: IDBLogger
-    private delim: string = String.fromCharCode(DBMeta.delim)
     private reader: BufReader
+    private delim: string = String.fromCharCode(DBMeta.delim)
 
     constructor(fpath: string, log?: IDBLogger) {
         this.file = Deno.openSync(fpath, 'r')
@@ -121,6 +122,7 @@ export class DBReaderAsync implements IDBReader {
 export class DBWriterSync {
     private file: Deno.File
     private delim: string = String.fromCharCode(DBMeta.delim)
+    private encoder = new TextEncoder()
 
     private constructor(fpath: string, fmode: 'a' | 'w') {
         this.file = Deno.openSync(fpath, fmode)
@@ -129,15 +131,9 @@ export class DBWriterSync {
     static append(fpath: string) { return new DBWriterSync(fpath, 'a') }
     static rewrite(fpath: string) { return new DBWriterSync(fpath, 'w') }
 
-    add(doc: Document, compact: boolean = true) {
-        let doc_s: string
-        if (compact) {
-            doc_s = JSON.stringify(doc)
-        } else {
-            doc_s = JSON.stringify(doc, null, '\t')
-        }
-        // синхронного буфер-райтера похоже нет в Deno, приходится извращаться
-        const arr = new TextEncoder().encode('\n' + doc_s + this.delim)
+    add(doc: Document, compact: boolean = true) { // синхронного буфер-райтера похоже нет в Deno, приходится извращаться
+        const doc_s = compact ? JSON.stringify(doc) : JSON.stringify(doc, null, '\t')
+        const arr = this.encoder.encode('\n' + doc_s + this.delim)
         let i = 0
         while (i < arr.length) {
             let buf: Uint8Array
@@ -152,6 +148,31 @@ export class DBWriterSync {
     }
 
     close() {
+        this.file.close()
+    }
+}
+
+export class DBWriterAsync {
+    private file: Deno.File
+    private writer: BufWriter
+    private delim: string = String.fromCharCode(DBMeta.delim)
+    private encoder = new TextEncoder()
+
+    private constructor(fpath: string, fmode: 'a' | 'w') {
+        this.file = Deno.openSync(fpath, fmode)
+        this.writer = new BufWriter(this.file, write_buf_size)
+    }
+
+    static append(fpath: string) { return new DBWriterAsync(fpath, 'a') }
+    static rewrite(fpath: string) { return new DBWriterAsync(fpath, 'w') }
+
+    async add(doc: Document, compact: boolean = true) {
+        const doc_s = compact ? JSON.stringify(doc) : JSON.stringify(doc, null, '\t')
+        await this.writer.write(this.encoder.encode('\n' + doc_s + this.delim))
+    }
+
+    async close() {
+        await this.writer.flush()
         this.file.close()
     }
 }

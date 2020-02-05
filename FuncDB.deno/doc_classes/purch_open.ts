@@ -8,7 +8,7 @@ export default class PurchOpen extends DocClass {
             bal.qty += line.qty
             bal.val += line.qty * line.price
             bal.from = doc.id
-            db.add_mut(bal)
+            db.add(bal)
         })
         return [true,]
     }

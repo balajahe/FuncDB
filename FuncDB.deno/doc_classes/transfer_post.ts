@@ -13,13 +13,13 @@ export default class TransferPost extends DocClass {
                 bal.qty -= line.qty
                 bal.val -= line.qty * line.cost
                 bal.from = doc.id
-                db.add_mut(bal)
+                db.add(bal)
 
                 bal = db.get_bal('bal=', [line.nomen, doc.stock2])
                 bal.qty += line.qty
                 bal.val += line.qty * line.cost
                 bal.from = doc.id
-                db.add_mut(bal)
+                db.add(bal)
             } else {
                 err += '\n"' + balkey + '": requested ' + line.qty + ' but balance is only ' + bal.qty
             }

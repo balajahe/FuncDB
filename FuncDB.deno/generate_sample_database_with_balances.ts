@@ -21,9 +21,9 @@ Deno.openSync(dbpath + DBMeta.data_immut, 'w').close()
 Deno.openSync(dbpath + DBMeta.data_current, 'w').close()
 
 // генерируем иммутабельные данные
-db = ERPCore.open(dbpath)
+db = new ERPCore(dbpath)
 gen_file(['purch.post', 'transfer.post', 'sale.post'])
-db.flush(true) // кэш не записываем, так как мы подменяем файл
+db.flush_sync(false) // кэш не записываем, так как нам нужен только один датафайл
 Deno.renameSync(dbpath + DBMeta.data_current, dbpath + DBMeta.data_immut)
 Deno.openSync(dbpath + DBMeta.data_current, 'w').close()
 
@@ -32,12 +32,12 @@ personcou = Math.floor(personcou * mut_scale)
 nomencou = Math.floor(nomencou * mut_scale)
 stockcou = Math.floor(stockcou * mut_scale)
 doccou = Math.floor(doccou * mut_scale)
-db = ERPCore.open(dbpath)
+db = new ERPCore(dbpath)
 gen_file(['purch.post', 'transfer.post', 'sale.post'])
 
 // генерируем открытые (неразнесенные) документы
 gen_docs(['purch.open', 'sale.open'])
-db.flush() // база готова вместе с кэшем
+db.flush_sync() // база готова вместе с кэшем
 
 function gen_file(doc_types: string[]) {
     ts = Date.now()
@@ -59,7 +59,7 @@ function gen_persons() {
                 erp_type: 'person.' + arand(person_types),
                 name: 'person ' + i 
             }
-        db.add_mut(doc)
+        db.add(doc)
     }
 }
 
@@ -75,7 +75,7 @@ async function gen_nomens() {
                 erp_type: 'nomen.' + arand(nomen_types),
                 name: 'nomen ' + i 
             }
-        db.add_mut(doc)
+        db.add(doc)
     }
 }
 
@@ -91,7 +91,7 @@ async function gen_stocks() {
                 erp_type: 'stock.' + arand(stock_types),
                 name: 'stock ' + i 
             }
-        db.add_mut(doc)
+        db.add(doc)
     } 
 }
 
@@ -129,7 +129,7 @@ async function gen_docs(doc_types: string[]) {
                 }
                 doc.lines.push(line)
             }
-            const [ok, msg] = db.add_mut(doc)
+            const [ok, msg] = db.add(doc)
             if (ok) {
                 i++
                 couall++

@@ -1,10 +1,8 @@
 import { Document, Result, DBMeta, DocClass, IDBCore, IDBLogger } from './DBMeta.ts'
-import { IDBReader, DBReaderSync, DBWriterSync } from './DBIO.ts'
+import { IDBReader, DBReaderSync, DBWriterSync, DBWriterAsync } from './DBIO.ts'
 import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
 
-function attach_doc_class(doc: Document) {
-    doc.class = get_doc_class(doc.type)
-}
+export { Document, Result }
 
 class Transaction {
     readonly current = new Array<Document>()
@@ -15,45 +13,27 @@ class Transaction {
 
 class Data {
     readonly all = new Array<Transaction>()
-    constructor() {
-        this.all.push(new Transaction())
-    }
-    get current(): Array<Document> {
-        return this.all[this.all.length-1].current
-    }
-    get cache_doc(): Map<string, Document> {
-        return this.all[this.all.length-1].cache_doc
-    }
-    get cache_top(): Map<string, Document> {
-        return this.all[this.all.length-1].cache_top
-    }
-    get cache_reduce(): Map<string, Result> {
-        return this.all[this.all.length-1].cache_reduce
-    }
-    tran_begin() {
-        this.all.push(new Transaction())
+    constructor() { this.all.push(new Transaction()) }
+    get current(): Array<Document> { return this.all[this.all.length-1].current }
+    get cache_doc(): Map<string, Document> { return this.all[this.all.length-1].cache_doc }
+    get cache_top(): Map<string, Document> { return this.all[this.all.length-1].cache_top }
+    get cache_reduce(): Map<string, Result> { return this.all[this.all.length-1].cache_reduce }
+    tran_begin() { 
+        this.all.push(new Transaction()) 
     }
     tran_commit() {
         if (this.all.length > 1) {
             const tran = this.all.pop()
-            for (const val of tran.current) {
-                this.current.push(val)
-            }
-            for (const [key, val] of tran.cache_doc.entries()) {
-                this.cache_doc.set(key, val)
-            }
-            for (const [key, val] of tran.cache_top.entries()) {
-                this.cache_top.set(key, val)
-            }
-            for (const [key, val] of tran.cache_reduce.entries()) {
-                this.cache_reduce.set(key, val)
-            }
-        } else throw('ERROR: Transaction is not started !')
+            for (const val of tran.current) this.current.push(val)
+            for (const [key, val] of tran.cache_doc.entries()) this.cache_doc.set(key, val)
+            for (const [key, val] of tran.cache_top.entries()) this.cache_top.set(key, val)
+            for (const [key, val] of tran.cache_reduce.entries()) this.cache_reduce.set(key, val)
+        } else throw 'ERROR: Transaction is not started !'
     }
     tran_rollback() {
         if (this.all.length > 1) {
             this.all.pop()
-        } else throw('ERROR: Transaction is not started !')
+        } else throw 'ERROR: Transaction is not started !'
     }
 }
 
@@ -61,15 +41,12 @@ export class DBCore implements IDBCore {
     private dbpath: string
     private data = new Data()
 
-    protected constructor(dbpath) { 
-        this.dbpath = dbpath 
+    constructor(dbpath) { 
+        this.dbpath = dbpath
+        this.init()
     }
 
-    static open(dbpath: string, no_cache: boolean = false): DBCore {
-        return new DBCore(dbpath).init()
-    }
-   
-    protected init(no_cache: boolean = false): DBCore {
+    private init(no_cache: boolean = false): DBCore {
         console.log('\ndatabase initialization started...')
 
         if (!no_cache) {
@@ -124,7 +101,7 @@ export class DBCore implements IDBCore {
         filter: (result: Result, doc: Document) => boolean, 
         reducer: (result: Result, doc: Document) => void,
         result: Result,
-        no_cache: boolean = false,
+        to_cache: boolean = true,
     ): Result {
         const key = filter.toString() + ',\n' + reducer.toString() + ',\n' + JSON.stringify(result)
         console.log('\nreduce() started...')
@@ -139,7 +116,7 @@ export class DBCore implements IDBCore {
                 reduce1(doc, db.log)
             }
             db.log.print_final()
-            if (!no_cache) {
+            if (to_cache) {
                 this.data.cache_reduce.set(key, JSON.stringify(result))
             }
         }
@@ -198,7 +175,27 @@ export class DBCore implements IDBCore {
         return result
     }
 
-    get(id: string, no_scan: boolean = false): Document | undefined {
+    map_current(
+        mapper: (doc: Document) => void
+    ): void {
+        if (this.data.all.length > 1) {
+            throw 'ERROR: Reorganization of current data is not allowed inside user transaction !'
+            return
+        }
+        this.flush_sync(true, true, 'map_current_' + Date.now())
+        this.tran_begin()
+        for (let doc of this.data.all[0].current) {
+            try {
+                mapper(doc)
+            } catch(e) {
+                console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
+                return
+            }
+        }
+        this.tran_commit()
+    }
+
+    get(id: string, allow_scan: boolean = true): Document | undefined {
         let cached: Document
         for (const tran of this.data.all) {
             cached = tran.cache_doc.get(id)
@@ -206,7 +203,7 @@ export class DBCore implements IDBCore {
                 return cached
             }
         }
-        if (!no_scan) {
+        if (allow_scan) {
             console.log('\nget("' + id + '") started...')
             const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
@@ -227,7 +224,7 @@ export class DBCore implements IDBCore {
         return undefined
     }
 
-    get_top(key: string, no_scan: boolean = false): Document | undefined {
+    get_top(key: string, allow_scan: boolean = true): Document | undefined {
         let cached: Document
         for (let i = this.data.all.length - 1; i >= 0; i--) { // обрабатываем транзакции в обратном порядке
             const tran = this.data.all[i]
@@ -236,7 +233,7 @@ export class DBCore implements IDBCore {
                 return cached
             }
         }
-        if (!no_scan) {
+        if (allow_scan) {
             console.log('\nget_top("' + key + '") started...')
             const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
@@ -256,7 +253,7 @@ export class DBCore implements IDBCore {
         return undefined
     }
 
-    add_mut(doc: Document): [boolean, string?] {
+    add(doc: Document): [boolean, string?] {
         try {
             if (doc.id === undefined || doc.id === null || doc.id === '') {
                 doc.id = doc.key + '^' + Date.now()
@@ -278,14 +275,18 @@ export class DBCore implements IDBCore {
         }
     }
 
-    private to_cache(doc: Document, log?: Log) {
-        if (doc.class.cache_doc && !this.data.cache_doc.has(doc.id)) {
+    private to_cache(doc: Document, log?: Log) { // порядок условий не трогать, тут все продумано !
+        if (doc.class.cache_doc) {
+            if (!this.data.cache_doc.has(doc.id)) {
+                log?.inc_processed()
+            }
             this.data.cache_doc.set(doc.id, doc)
-            log?.inc_processed()
         }
-        if (doc.class.cache_top && !this.data.cache_top.has(doc.key)) {
+        if (doc.class.cache_top) {
+            if (!this.data.cache_top.has(doc.key)) {
+                log?.inc_processed1()
+            }
             this.data.cache_top.set(doc.key, doc)
-            log?.inc_processed1()
         }
     }
 
@@ -306,11 +307,17 @@ export class DBCore implements IDBCore {
         this.data.tran_rollback()
     }
 
-    flush(no_cache: boolean = false, compact: boolean = true) {
+    flush_sync(and_cache: boolean = true, compact: boolean = true, snapshot: string = undefined) {
         console.log('\nflushing database to disk...')
 
+        let path = this.dbpath
+        if (snapshot !== undefined) {
+            path += snapshot + '/'
+            Deno.mkdirSync(path)
+        }
+
         let cou = 0 
-        let db = DBWriterSync.rewrite(this.dbpath + DBMeta.data_current)
+        let db = DBWriterSync.rewrite(path + DBMeta.data_current)
         for (const doc of this.data.current) {
             db.add(doc, compact)
             cou++
@@ -318,9 +325,9 @@ export class DBCore implements IDBCore {
         db.close()
         console.log('    data_current: ' + cou)
 
-        if (!no_cache) {
+        if (and_cache) {
             cou = 0
-            db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_doc)
+            db = DBWriterSync.rewrite(path + DBMeta.cache_doc)
             for (const doc of this.data.cache_doc.values()) {
                 db.add(doc, compact)
                 cou++
@@ -329,7 +336,7 @@ export class DBCore implements IDBCore {
             console.log('    cache_doc: ' + cou)
 
             cou = 0
-            db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_top)
+            db = DBWriterSync.rewrite(path + DBMeta.cache_top)
             for (const doc of this.data.cache_top.values()) {
                 db.add(doc, compact)
                 cou++
@@ -338,7 +345,7 @@ export class DBCore implements IDBCore {
             console.log('    cache_top: ' + cou)
 
             cou = 0
-            db = DBWriterSync.rewrite(this.dbpath + DBMeta.cache_reduce)
+            db = DBWriterSync.rewrite(path + DBMeta.cache_reduce)
             for (const entr of this.data.cache_reduce.entries()) {
                 db.add(entr, true)
                 cou++
@@ -346,6 +353,62 @@ export class DBCore implements IDBCore {
             db.close()
             console.log('    cache_reduce: ' + cou)
         }
+        console.log('database is flushed !')
+    }
+
+    async flush_async(and_cache: boolean = false, compact: boolean = true, snapshot: string = undefined) {
+        console.log('\nflushing database to disk...')
+
+        let path = this.dbpath
+        if (snapshot !== undefined) {
+            path += snapshot + '/'
+            Deno.mkdirSync(path)
+        }
+
+        const ww = new Array<Promise<void>>()
+        const dd = new Array<Promise<void>>()
+
+        let cou = 0 
+        let db = DBWriterAsync.rewrite(path + DBMeta.data_current)
+        for (const doc of this.data.current) {
+            ww.push(db.add(doc, compact))
+            cou++
+        }
+        dd.push(db.close())
+        console.log('    data_current: ' + cou)
+
+        if (and_cache) {
+            cou = 0
+            db = DBWriterAsync.rewrite(path + DBMeta.cache_doc)
+            for (const doc of this.data.cache_doc.values()) {
+                ww.push(db.add(doc, compact))
+                cou++
+            }
+            dd.push(db.close())
+            console.log('    cache_doc: ' + cou)
+
+            cou = 0
+            db = DBWriterAsync.rewrite(path + DBMeta.cache_top)
+            for (const doc of this.data.cache_top.values()) {
+                ww.push(db.add(doc, compact))
+                cou++
+            }
+            dd.push(db.close())
+            console.log('    cache_top: ' + cou)
+
+            cou = 0
+            db = DBWriterAsync.rewrite(path + DBMeta.cache_reduce)
+            for (const entr of this.data.cache_reduce.entries()) {
+                ww.push(db.add(entr, true))
+                cou++
+            }
+            dd.push(db.close())
+            console.log('    cache_reduce: ' + cou)
+        }
+
+        await Promise.all(ww)
+        await Promise.all(dd)
+
         console.log('database is flushed !')
     }
 }
@@ -372,6 +435,10 @@ class DBReaderWithClass implements IDBReader {
             return this.next()
         }
     }
+}
+
+function attach_doc_class(doc: Document) {
+    doc.class = get_doc_class(doc.type)
 }
 
 class Log implements IDBLogger {

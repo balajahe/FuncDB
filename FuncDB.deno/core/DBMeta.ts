@@ -21,22 +21,26 @@ export interface IDBCore {
         filter: (result: Result, doc: Document) => boolean, 
         reducer: (result: Result, doc: Document) => void,
         result: Result,
-        no_cache?: boolean,
-    ): Result;
+        to_cache?: boolean,
+    ): Result
     reduce_top(
         filter: (result: Result, doc: Document) => boolean, 
         reducer: (result: Result, doc: Document) => void,
         result: Result,
-    ): Result;
-    get(id: string, no_scan?: boolean): Document | undefined
-    get_top(key: string, no_scan?: boolean): Document | undefined
-    add_mut(doc: Document): [boolean, string?]
+    ): Result
+    map_current(
+        mapper: (doc: Document) => void
+    ): void
+    get(id: string, allow_scan?: boolean): Document | undefined
+    get_top(key: string, allow_scan?: boolean): Document | undefined
+    add(doc: Document): [boolean, string?]
     doc_class(type: string): DocClass
     key_from_id(id: string): string
     tran_begin(): void
     tran_commit(): void
     tran_rollback(): void
-    flush(no_cache?: boolean, compact?: boolean): void
+    flush_sync(and_cache?: boolean, compact?: boolean, snapshot?: string): void
+    flush_async(and_cache?: boolean, compact?: boolean, snapshot?: string): Promise<void>
 }
 
 export interface IDBLogger {

@@ -1,5 +1,5 @@
 import { ERPCore } from './core/ERPCore.ts'
-const db = ERPCore.open('./database/')
+const db = new ERPCore('./database/')
 
 class ResultRow { // строка результирующей таблицы
     nomen_type = ''
@@ -63,7 +63,7 @@ for (const key of keys) {
     )
 }
 
-db.add_mut(
+[,] = db.add(
     {
         type: 'purch.post',
         key: 'purch.post.XXX',
@@ -80,7 +80,7 @@ db.add_mut(
     }
 )
 console.log('\n1 purch document added, run sample again')
-db.flush()
+db.flush_sync()
 
 
 function f(n: number): string {
