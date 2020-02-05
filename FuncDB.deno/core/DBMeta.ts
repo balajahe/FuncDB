@@ -28,7 +28,7 @@ export interface IDBCore {
         reducer: (result: Result, doc: Document) => void,
         result: Result,
     ): Result
-    map_current(
+    overwrite_current(
         mapper: (doc: Document) => void
     ): void
     get(id: string, allow_scan?: boolean): Document | undefined

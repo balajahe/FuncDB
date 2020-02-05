@@ -5,22 +5,26 @@ import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
 export { Document, Result }
 
 class Transaction {
-    readonly current = new Array<Document>()
-    readonly cache_doc = new Map<string, Document>()
-    readonly cache_top = new Map<string, Document>()
+    current = new Array<Document>()
+    cache_doc = new Map<string, Document>()
+    cache_top = new Map<string, Document>()
     readonly cache_reduce = new Map<string, Result>()
 }
 
-class Data {
+class InMemoryData {
     readonly all = new Array<Transaction>()
+    readonly cache_doc_immut = new Map<string, Document>()
+    readonly cache_top_immut = new Map<string, Document>()
+
     constructor() { this.all.push(new Transaction()) }
+
     get current(): Array<Document> { return this.all[this.all.length-1].current }
     get cache_doc(): Map<string, Document> { return this.all[this.all.length-1].cache_doc }
     get cache_top(): Map<string, Document> { return this.all[this.all.length-1].cache_top }
     get cache_reduce(): Map<string, Result> { return this.all[this.all.length-1].cache_reduce }
-    tran_begin() { 
-        this.all.push(new Transaction()) 
-    }
+
+    tran_begin() { this.all.push(new Transaction()) }
+
     tran_commit() {
         if (this.all.length > 1) {
             const tran = this.all.pop()
@@ -30,6 +34,7 @@ class Data {
             for (const [key, val] of tran.cache_reduce.entries()) this.cache_reduce.set(key, val)
         } else throw 'ERROR: Transaction is not started !'
     }
+
     tran_rollback() {
         if (this.all.length > 1) {
             this.all.pop()
@@ -39,62 +44,79 @@ class Data {
 
 export class DBCore implements IDBCore {
     private dbpath: string
-    private data = new Data()
+    private data = new InMemoryData()
 
     constructor(dbpath) { 
         this.dbpath = dbpath
-        this.init()
+        console.log('\ndatabase initialization started...')
+        this.init_immut()
+        this.init_mut()
+        console.log('database is initialized !')
     }
 
-    private init(no_cache: boolean = false): DBCore {
-        console.log('\ndatabase initialization started...')
-
-        if (!no_cache) {
+    private init_immut(from_cache: boolean = true) {
+        if (from_cache) {
             try {
                 Deno.openSync(this.dbpath + DBMeta.cache_doc, 'r').close()
                 Deno.openSync(this.dbpath + DBMeta.cache_top, 'r').close()
                 Deno.openSync(this.dbpath + DBMeta.cache_reduce, 'r').close()
             } catch(_) {
-                no_cache = true
+                from_cache = false
             }
         }
-        if (!no_cache) {
+        if (from_cache) {
             let db = new DBReaderWithClass(this.dbpath + DBMeta.cache_doc, 'cache')
-            for (let doc = db.next(); doc; doc = db.next()) {
-                this.data.cache_doc.set(doc.id, doc)
-            }
+            for (let doc = db.next(); doc; doc = db.next()) this.data.cache_doc_immut.set(doc.id, doc)
             db.log.print_final()
 
             db = new DBReaderWithClass(this.dbpath + DBMeta.cache_top, 'cache')
-            for (let doc = db.next(); doc; doc = db.next()) {
-                this.data.cache_top.set(doc.key, doc)
-            }
+            for (let doc = db.next(); doc; doc = db.next()) this.data.cache_top_immut.set(doc.key, doc)
             db.log.print_final()
 
             const log = new Log(this.dbpath + DBMeta.cache_reduce, 'cache_reduce')
             const db1 = new DBReaderSync(this.dbpath + DBMeta.cache_reduce, log)
-            for (let red = db1.next(); red; red = db1.next()) {
-                this.data.cache_reduce.set(red[0], red[1])
-            }
+            for (let red = db1.next(); red; red = db1.next()) this.data.cache_reduce.set(red[0], red[1])
             log.print_final()
-
         } else {
             const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut, 'init')
             for (let doc = db.next(); doc; doc = db.next()) {
-                this.to_cache(doc, db.log)
+                this.to_cache_immut(doc, db.log)
             }
             db.log.print_final()
         }
+        this.data.all[0].cache_doc = new Map(this.data.cache_doc_immut)
+        this.data.all[0].cache_top = new Map(this.data.cache_top_immut)
+    }
 
+    private init_mut(no_cache: boolean = false) {
         const db = new DBReaderWithClass(this.dbpath + DBMeta.data_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
-            this.to_cache(doc, db.log)
             this.data.current.push(doc)
+            this.to_cache(doc, db.log)
         }
         db.log.print_final()
+    }
 
-        console.log('database is initialized !')
-        return this
+    private to_cache_immut(doc: Document, log?: IDBLogger) {
+        if (doc.class.cache_doc) {
+            if (log !== undefined && !this.data.cache_doc_immut.has(doc.id)) log.inc_processed()
+            this.data.cache_doc_immut.set(doc.id, doc)
+        }
+        if (doc.class.cache_top) {
+            if (log !== undefined && !this.data.cache_top_immut.has(doc.key)) log.inc_processed1()
+            this.data.cache_top_immut.set(doc.key, doc)
+        }
+    }
+
+    private to_cache(doc: Document, log?: IDBLogger) {
+        if (doc.class.cache_doc) {
+            if (log !== undefined && !this.data.cache_doc.has(doc.id)) log.inc_processed()
+            this.data.cache_doc.set(doc.id, doc)
+        }
+        if (doc.class.cache_top) {
+            if (log !== undefined && !this.data.cache_top.has(doc.key)) log.inc_processed1()
+            this.data.cache_top.set(doc.key, doc)
+        }
     }
 
     reduce(
@@ -175,24 +197,37 @@ export class DBCore implements IDBCore {
         return result
     }
 
-    map_current(
+    overwrite_current(
         mapper: (doc: Document) => void
     ): void {
         if (this.data.all.length > 1) {
             throw 'ERROR: Reorganization of current data is not allowed inside user transaction !'
             return
         }
-        this.flush_sync(true, true, 'map_current_' + Date.now())
+        this.flush_sync(false, true, 'overwrite_current_' + Date.now())
+
+        console.log('\noverwrite_current() started...')
+        const log = new Log('in-memory/current', 'memory')
+
         this.tran_begin()
+        this.data.all[1].cache_doc = new Map(this.data.cache_doc_immut)
+        this.data.all[1].cache_top = new Map(this.data.cache_top_immut)
         for (let doc of this.data.all[0].current) {
+            log.inc_total()
             try {
                 mapper(doc)
             } catch(e) {
                 console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
+                this.tran_rollback()
                 return
             }
         }
-        this.tran_commit()
+        this.data.all[0].current = this.data.current
+        this.data.all[0].cache_doc = this.data.cache_doc
+        this.data.all[0].cache_top = this.data.cache_top
+        this.tran_rollback()
+
+        log.print_final()
     }
 
     get(id: string, allow_scan: boolean = true): Document | undefined {
@@ -208,6 +243,7 @@ export class DBCore implements IDBCore {
             const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
                 if (doc.id === id) {
+                    this.data.cache_doc_immut.set(id, doc)
                     this.data.cache_doc.set(id, doc)
                     return doc
                 }
@@ -238,6 +274,7 @@ export class DBCore implements IDBCore {
             const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
                 if (doc.key === key) {
+                    this.data.cache_top_immut.set(key, doc)
                     this.data.cache_top.set(key, doc)
                 }
             }
@@ -272,21 +309,6 @@ export class DBCore implements IDBCore {
         } catch(e) {
             console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
             Deno.exit()
-        }
-    }
-
-    private to_cache(doc: Document, log?: Log) { // порядок условий не трогать, тут все продумано !
-        if (doc.class.cache_doc) {
-            if (!this.data.cache_doc.has(doc.id)) {
-                log?.inc_processed()
-            }
-            this.data.cache_doc.set(doc.id, doc)
-        }
-        if (doc.class.cache_top) {
-            if (!this.data.cache_top.has(doc.key)) {
-                log?.inc_processed1()
-            }
-            this.data.cache_top.set(doc.key, doc)
         }
     }
 
@@ -328,7 +350,7 @@ export class DBCore implements IDBCore {
         if (and_cache) {
             cou = 0
             db = DBWriterSync.rewrite(path + DBMeta.cache_doc)
-            for (const doc of this.data.cache_doc.values()) {
+            for (const doc of this.data.cache_doc_immut.values()) {
                 db.add(doc, compact)
                 cou++
             }
@@ -337,7 +359,7 @@ export class DBCore implements IDBCore {
 
             cou = 0
             db = DBWriterSync.rewrite(path + DBMeta.cache_top)
-            for (const doc of this.data.cache_top.values()) {
+            for (const doc of this.data.cache_top_immut.values()) {
                 db.add(doc, compact)
                 cou++
             }
@@ -356,6 +378,7 @@ export class DBCore implements IDBCore {
         console.log('database is flushed !')
     }
 
+    // не работает, почему - не разобрался, да и массив промисов создает не быстрее, чем синхрон на диск пишет
     async flush_async(and_cache: boolean = false, compact: boolean = true, snapshot: string = undefined) {
         console.log('\nflushing database to disk...')
 
@@ -380,7 +403,7 @@ export class DBCore implements IDBCore {
         if (and_cache) {
             cou = 0
             db = DBWriterAsync.rewrite(path + DBMeta.cache_doc)
-            for (const doc of this.data.cache_doc.values()) {
+            for (const doc of this.data.cache_doc_immut.values()) {
                 ww.push(db.add(doc, compact))
                 cou++
             }
@@ -389,7 +412,7 @@ export class DBCore implements IDBCore {
 
             cou = 0
             db = DBWriterAsync.rewrite(path + DBMeta.cache_top)
-            for (const doc of this.data.cache_top.values()) {
+            for (const doc of this.data.cache_top_immut.values()) {
                 ww.push(db.add(doc, compact))
                 cou++
             }

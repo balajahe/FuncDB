@@ -6,6 +6,7 @@ const chunk_buf_size = 409600 // надо сделать авторесайз ч
 const write_buf_size = 4096 
 // при записи через File.write() невозможно указать буфер отличный от стандартного, 
 // а бOльшие буфера просто молча обрезаются и не записываются в файл (дефект Deno)
+// проверется на 3-м примере
 
 export interface IDBReader {
     next(): Document | false | Promise<Document | false> 
@@ -131,7 +132,7 @@ export class DBWriterSync {
     static append(fpath: string) { return new DBWriterSync(fpath, 'a') }
     static rewrite(fpath: string) { return new DBWriterSync(fpath, 'w') }
 
-    add(doc: Document, compact: boolean = true) { // синхронного буфер-райтера похоже нет в Deno, приходится извращаться
+    add(doc: Document, compact: boolean = true) {
         const doc_s = compact ? JSON.stringify(doc) : JSON.stringify(doc, null, '\t')
         const arr = this.encoder.encode('\n' + doc_s + this.delim)
         let i = 0

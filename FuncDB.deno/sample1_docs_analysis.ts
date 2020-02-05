@@ -58,5 +58,5 @@ if (ok) {
     console.log('\nError adding sale: ' + msg)
     console.log('Run "sample2_invent_turnover_balance.ts" to adding purch')
 }
-await db.flush_sync(true, false)
+db.flush_sync(true, false)
 //db.flush_sync()
