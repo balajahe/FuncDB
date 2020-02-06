@@ -1,7 +1,7 @@
 import { ERPCore } from './core/ERPCore.ts'
 const db = new ERPCore('./database/')
 
-db.recreate_bals()
+db.rewrite_bals() 
 
 /*
 const [ok, msg] = db.add(

@@ -34,8 +34,8 @@ export class ERPCore extends DBCore implements IERPCore {
         return this.get_bal_by_key(this.balkey_from_ids(type, ids))
     }
 
-    recreate_bals() {
-        this.recreate_current(
+    rewrite_bals() {
+        this.rewrite_current(
             (_, doc) => { 
                 if (!doc.type.startsWith('bal')) {
                     const [ok, err] = this.add(doc)

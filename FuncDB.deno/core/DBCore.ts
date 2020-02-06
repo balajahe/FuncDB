@@ -15,7 +15,6 @@ class InMemoryData {
     readonly cache_top_immut = new Map<string, Document>()
     readonly cache_reduce = new Map<string, Accumulator>()
     readonly all = new Array<Transaction>()
-
     constructor() { this.all.push(new Transaction()) }
 
     get current(): Array<Document> { return this.all[this.all.length-1].current }
@@ -48,7 +47,7 @@ export class DBCore implements IDBCore {
         this.dbpath = dbpath
         console.log('\ndatabase initialization started...')
         this.init_immut()
-        this.init_mut()
+        this.init_current()
         console.log('database is initialized !')
     }
 
@@ -86,7 +85,7 @@ export class DBCore implements IDBCore {
         this.data.all[0].cache_top = new Map(this.data.cache_top_immut)
     }
 
-    private init_mut(no_cache: boolean = false) {
+    private init_current(no_cache: boolean = false) {
         const db = new DocReader(this.dbpath + DBMeta.data_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
             this.data.current.push(doc)
@@ -195,7 +194,7 @@ export class DBCore implements IDBCore {
         return accum
     }
 
-    recreate_current(
+    rewrite_current( 
         creator: (accum: Accumulator, doc: Document) => void,
         accum: Accumulator
     ): void {
@@ -203,28 +202,31 @@ export class DBCore implements IDBCore {
             throw 'ERROR: Recreation of current data is not allowed inside user transaction !'
             return
         }
-        this.flush_sync(false, true, 'overwrite_current_' + Date.now())
+        this.flush_sync(true, true, 'rewrite_current')
 
-        console.log('\noverwrite_current() started...')
+        console.log('\nrewrite_current() started...')
         const log = new Log('in-memory/current', 'memory')
 
-        this.tran_begin()
-        this.data.all[1].cache_doc = new Map(this.data.cache_doc_immut)
-        this.data.all[1].cache_top = new Map(this.data.cache_top_immut)
-        for (let doc of this.data.all[0].current) {
+        const current_save = this.data.all[0].current.slice()
+        const cache_doc_save = new Map(this.data.all[0].cache_doc)
+        const cache_top_save = new Map(this.data.all[0].cache_top)
+
+        this.data.all[0].current = new Array<Document>()
+        this.data.all[0].cache_doc = new Map(this.data.cache_doc_immut)
+        this.data.all[0].cache_top = new Map(this.data.cache_top_immut)
+
+        for (let doc of current_save) {
             log.inc_total()
             try {
                 creator(accum, doc)
             } catch(e) {
                 console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
-                this.tran_rollback()
+                this.data.all[0].current = current_save
+                this.data.all[0].cache_doc = cache_doc_save
+                this.data.all[0].cache_top = cache_top_save
                 return
             }
         }
-        this.data.all[0].current = this.data.current
-        this.data.all[0].cache_doc = this.data.cache_doc
-        this.data.all[0].cache_top = this.data.cache_top
-        this.tran_rollback()
 
         log.print_final()
     }
@@ -336,7 +338,7 @@ export class DBCore implements IDBCore {
 
         let path = this.dbpath
         if (snapshot !== undefined) {
-            path += snapshot + '/'
+            path += DBMeta.snapshots + snapshot + '_' + Date.now() + '/'
             Deno.mkdirSync(path)
         }
 

@@ -7,7 +7,8 @@ export const enum DBMeta {
     delim = 1,
     cache_doc = 'cache_doc.json',
     cache_top = 'cache_top.json',
-    cache_reduce = 'cache_reduce.json'
+    cache_reduce = 'cache_reduce.json',
+    snapshots = 'snapshots/',
 }
 
 export abstract class DocClass {
@@ -28,7 +29,7 @@ export interface IDBCore {
         reducer: (accum: Accumulator, doc: Document) => void,
         accum: Accumulator,
     ): Accumulator
-    recreate_current(
+    rewrite_current(
         creator: (accum: Accumulator, doc: Document) => void,
         accum: Accumulator
     ): void

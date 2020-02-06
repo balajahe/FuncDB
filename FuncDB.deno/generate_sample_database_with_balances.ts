@@ -17,6 +17,7 @@ try {
     Deno.removeSync(dbpath, {recursive: true})
 } catch(_) {}
 Deno.mkdirSync(dbpath)
+Deno.mkdirSync(dbpath + DBMeta.snapshots)
 Deno.openSync(dbpath + DBMeta.data_immut, 'w').close()
 Deno.openSync(dbpath + DBMeta.data_current, 'w').close()
 
