@@ -203,7 +203,6 @@ export class DBCore implements IDBCore {
             return
         }
         this.flush_sync(true, true, 'rewrite_current')
-
         console.log('\nrewrite_current() started...')
         const log = new Log('in-memory/current', 'memory')
 
@@ -292,10 +291,13 @@ export class DBCore implements IDBCore {
     }
 
     add(doc: Document): [boolean, string?] {
-        try {
+       try {
             if (doc.id === undefined || doc.id === null || doc.id === '') {
                 doc.id = this.id_from_key(doc.key)
+            } else {
+                doc.key = key_from_id(doc.id)
             }
+            doc.ts = ts_from_id(doc.id)
             attach_doc_class(doc)
             this.tran_begin()
             this.data.current.push(doc)
@@ -345,9 +347,10 @@ export class DBCore implements IDBCore {
         let cou = 0 
         let db = DBWriterSync.rewrite(path + DBMeta.data_current)
         for (const doc of this.data.current) {
-            delete doc.key
-            delete doc.ts
-            db.add(doc, compact)
+            const doc1 = Object.assign({}, doc)
+            delete doc1.key
+            delete doc1.ts
+            db.add(doc1, compact)
             cou++
         }
         db.close()
@@ -357,9 +360,10 @@ export class DBCore implements IDBCore {
             cou = 0
             db = DBWriterSync.rewrite(path + DBMeta.cache_doc)
             for (const doc of this.data.cache_doc_immut.values()) {
-                delete doc.key
-                delete doc.ts
-                db.add(doc, compact)
+                const doc1 = Object.assign({}, doc)
+                delete doc1.key
+                delete doc1.ts
+                db.add(doc1, compact)
                 cou++
             }
             db.close()
@@ -368,9 +372,10 @@ export class DBCore implements IDBCore {
             cou = 0
             db = DBWriterSync.rewrite(path + DBMeta.cache_top)
             for (const doc of this.data.cache_top_immut.values()) {
-                delete doc.key
-                delete doc.ts
-                db.add(doc, compact)
+                const doc1 = Object.assign({}, doc)
+                delete doc1.key
+                delete doc1.ts
+                db.add(doc1, compact)
                 cou++
             }
             db.close()
