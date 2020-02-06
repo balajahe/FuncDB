@@ -54,7 +54,6 @@ function gen_persons() {
         let doc = 
             {
                 type: 'person',
-                key: 'person.' + i,
                 id: 'person.' + i + '^' + ts,
                 erp_type: 'person.' + arand(person_types),
                 name: 'person ' + i 
@@ -70,7 +69,6 @@ async function gen_nomens() {
         let doc = 
             {
                 type: 'nomen',
-                key: 'nomen.' + i,
                 id: 'nomen.' + i + '^' + ts,
                 erp_type: 'nomen.' + arand(nomen_types),
                 name: 'nomen ' + i 
@@ -86,7 +84,6 @@ async function gen_stocks() {
         let doc =
             {
                 type: 'stock',
-                key: 'stock.' + i,
                 id: 'stock.' + i + '^' + ts,
                 erp_type: 'stock.' + arand(stock_types),
                 name: 'stock ' + i 
@@ -106,7 +103,6 @@ async function gen_docs(doc_types: string[]) {
             let doc: any =
                 {
                     type: doctype,
-                    key: doctype + '.' + i,
                     id: doctype + '.' + i + '^' + ts,
                     date: date,
                     person: 'person.' + irand(0, personcou-1) + '^' + ts

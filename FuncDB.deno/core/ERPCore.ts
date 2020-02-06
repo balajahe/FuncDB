@@ -1,7 +1,7 @@
 import { BalType, Balance, IERPCore } from './ERPMeta.ts' 
-import { DBCore, Document, Result } from './DBCore.ts'
+import { DBCore, Document, Accumulator } from './DBCore.ts'
 
-export { Document, Result }
+export { Document, Accumulator }
 
 export class ERPCore extends DBCore implements IERPCore {
    
@@ -21,7 +21,7 @@ export class ERPCore extends DBCore implements IERPCore {
             bal = {
                 type: key.slice(0, key.indexOf('|')),
                 key: key,
-                id: undefined,
+                id: this.id_from_key(key),
                 from: undefined,
                 qty: 0,
                 val: 0,
@@ -35,11 +35,14 @@ export class ERPCore extends DBCore implements IERPCore {
     }
 
     recreate_bals() {
-        this.overwrite_current((doc) => { 
-            if (!doc.type.startsWith('bal')) {
-                const [ok, err] = this.add(doc)
-                if (!ok) throw err
-            }
-        })
+        this.recreate_current(
+            (_, doc) => { 
+                if (!doc.type.startsWith('bal')) {
+                    const [ok, err] = this.add(doc)
+                    if (!ok) throw err
+                }
+            },
+            {}
+        )
     }
 }

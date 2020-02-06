@@ -39,7 +39,7 @@ for (r of Object.values(res)) {
 const [ok, msg] = db.add(
     {
         type: 'sale.post',
-        key: 'sale.post.XXX',
+        key: 'sale.XXX',
         date: '2020-01-21',
         person: db.get_top('person.0').id,
         stock: db.get_top('stock.0').id,
@@ -53,9 +53,9 @@ const [ok, msg] = db.add(
     }
 )
 if (ok) {
-    console.log('\n1 sale document added, run this sample again')
+    console.log('\n1 sale document added, run sample again')
 } else {
-    console.log('\nError adding sale: ' + msg)
+    console.log('\n' + msg)
     console.log('Run "sample2_invent_turnover_balance.ts" to adding purch')
 }
 db.flush_sync(true, false)

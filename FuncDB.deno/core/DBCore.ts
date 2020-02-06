@@ -1,27 +1,26 @@
-import { Document, Result, DBMeta, DocClass, IDBCore, IDBLogger } from './DBMeta.ts'
+import { Document, Accumulator, DBMeta, DocClass, IDBCore, IDBLog } from './DBMeta.ts'
 import { IDBReader, DBReaderSync, DBWriterSync, DBWriterAsync } from './DBIO.ts'
 import { get_doc_class } from '../doc_classes/.get_doc_class.ts'
 
-export { Document, Result }
+export { Document, Accumulator }
 
 class Transaction {
     current = new Array<Document>()
     cache_doc = new Map<string, Document>()
     cache_top = new Map<string, Document>()
-    readonly cache_reduce = new Map<string, Result>()
 }
 
 class InMemoryData {
-    readonly all = new Array<Transaction>()
     readonly cache_doc_immut = new Map<string, Document>()
     readonly cache_top_immut = new Map<string, Document>()
+    readonly cache_reduce = new Map<string, Accumulator>()
+    readonly all = new Array<Transaction>()
 
     constructor() { this.all.push(new Transaction()) }
 
     get current(): Array<Document> { return this.all[this.all.length-1].current }
     get cache_doc(): Map<string, Document> { return this.all[this.all.length-1].cache_doc }
     get cache_top(): Map<string, Document> { return this.all[this.all.length-1].cache_top }
-    get cache_reduce(): Map<string, Result> { return this.all[this.all.length-1].cache_reduce }
 
     tran_begin() { this.all.push(new Transaction()) }
 
@@ -31,7 +30,6 @@ class InMemoryData {
             for (const val of tran.current) this.current.push(val)
             for (const [key, val] of tran.cache_doc.entries()) this.cache_doc.set(key, val)
             for (const [key, val] of tran.cache_top.entries()) this.cache_top.set(key, val)
-            for (const [key, val] of tran.cache_reduce.entries()) this.cache_reduce.set(key, val)
         } else throw 'ERROR: Transaction is not started !'
     }
 
@@ -65,11 +63,11 @@ export class DBCore implements IDBCore {
             }
         }
         if (from_cache) {
-            let db = new DBReaderWithClass(this.dbpath + DBMeta.cache_doc, 'cache')
+            let db = new DocReader(this.dbpath + DBMeta.cache_doc, 'cache')
             for (let doc = db.next(); doc; doc = db.next()) this.data.cache_doc_immut.set(doc.id, doc)
             db.log.print_final()
 
-            db = new DBReaderWithClass(this.dbpath + DBMeta.cache_top, 'cache')
+            db = new DocReader(this.dbpath + DBMeta.cache_top, 'cache')
             for (let doc = db.next(); doc; doc = db.next()) this.data.cache_top_immut.set(doc.key, doc)
             db.log.print_final()
 
@@ -78,7 +76,7 @@ export class DBCore implements IDBCore {
             for (let red = db1.next(); red; red = db1.next()) this.data.cache_reduce.set(red[0], red[1])
             log.print_final()
         } else {
-            const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut, 'init')
+            const db = new DocReader(this.dbpath + DBMeta.data_immut, 'init')
             for (let doc = db.next(); doc; doc = db.next()) {
                 this.to_cache_immut(doc, db.log)
             }
@@ -89,7 +87,7 @@ export class DBCore implements IDBCore {
     }
 
     private init_mut(no_cache: boolean = false) {
-        const db = new DBReaderWithClass(this.dbpath + DBMeta.data_current, 'init')
+        const db = new DocReader(this.dbpath + DBMeta.data_current, 'init')
         for (let doc = db.next(); doc; doc = db.next()) {
             this.data.current.push(doc)
             this.to_cache(doc, db.log)
@@ -97,7 +95,7 @@ export class DBCore implements IDBCore {
         db.log.print_final()
     }
 
-    private to_cache_immut(doc: Document, log?: IDBLogger) {
+    private to_cache_immut(doc: Document, log?: IDBLog) {
         if (doc.class.cache_doc) {
             if (log !== undefined && !this.data.cache_doc_immut.has(doc.id)) log.inc_processed()
             this.data.cache_doc_immut.set(doc.id, doc)
@@ -108,7 +106,7 @@ export class DBCore implements IDBCore {
         }
     }
 
-    private to_cache(doc: Document, log?: IDBLogger) {
+    private to_cache(doc: Document, log?: IDBLog) {
         if (doc.class.cache_doc) {
             if (log !== undefined && !this.data.cache_doc.has(doc.id)) log.inc_processed()
             this.data.cache_doc.set(doc.id, doc)
@@ -120,26 +118,26 @@ export class DBCore implements IDBCore {
     }
 
     reduce(
-        filter: (result: Result, doc: Document) => boolean, 
-        reducer: (result: Result, doc: Document) => void,
-        result: Result,
+        filter: (accum: Accumulator, doc: Document) => boolean, 
+        reducer: (accum: Accumulator, doc: Document) => void,
+        accum: Accumulator,
         to_cache: boolean = true,
-    ): Result {
-        const key = filter.toString() + ',\n' + reducer.toString() + ',\n' + JSON.stringify(result)
+    ): Accumulator {
+        const key = filter.toString() + ',\n' + reducer.toString() + ',\n' + JSON.stringify(accum)
         console.log('\nreduce() started...')
         //console.log('\nreduce() started...\n' + key)
         const cached = this.data.cache_reduce.get(key)
         if (cached !== undefined) {
             console.log('    immutable part of result taken from cache !')
-            result = JSON.parse(cached)
+            accum = JSON.parse(cached)
         } else {
-            const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut, 'file')
+            const db = new DocReader(this.dbpath + DBMeta.data_immut, 'file')
             for (let doc = db.next(); doc; doc = db.next()) {
                 reduce1(doc, db.log)
             }
             db.log.print_final()
             if (to_cache) {
-                this.data.cache_reduce.set(key, JSON.stringify(result))
+                this.data.cache_reduce.set(key, JSON.stringify(accum))
             }
         }
         const log = new Log('in-memory/data_current', 'memory')
@@ -150,12 +148,12 @@ export class DBCore implements IDBCore {
             }
         }
         log.print_final()
-        return result
+        return accum
 
         function reduce1(doc: Document, log?: Log) {
             try {
-                if(filter(result, doc)) {
-                    reducer(result, doc)
+                if(filter(accum, doc)) {
+                    reducer(accum, doc)
                     log?.inc_processed()
                 }
             } catch(e) {
@@ -166,10 +164,10 @@ export class DBCore implements IDBCore {
     }
 
     reduce_top(
-        filter: (result: Result, doc: Document) => boolean, 
-        reducer: (result: Result, doc: Document) => void,
-        result: Result,
-    ): Result {
+        filter: (accum: Accumulator, doc: Document) => boolean, 
+        reducer: (accum: Accumulator, doc: Document) => void,
+        accum: Accumulator,
+    ): Accumulator {
         console.log('\nreduce_top() started...')
         const log = new Log('in-memory/cache_top', 'memory')
         for (let i = 0; i < this.data.all.length; i++) {
@@ -183,8 +181,8 @@ export class DBCore implements IDBCore {
                 }
                 log.inc_total()
                 try {
-                    if(filter(result, doc)) {
-                        reducer(result, doc)
+                    if(filter(accum, doc)) {
+                        reducer(accum, doc)
                         log.inc_processed()
                     }
                 } catch(e) {
@@ -194,14 +192,15 @@ export class DBCore implements IDBCore {
             }
         }
         log.print_final()
-        return result
+        return accum
     }
 
-    overwrite_current(
-        mapper: (doc: Document) => void
+    recreate_current(
+        creator: (accum: Accumulator, doc: Document) => void,
+        accum: Accumulator
     ): void {
         if (this.data.all.length > 1) {
-            throw 'ERROR: Reorganization of current data is not allowed inside user transaction !'
+            throw 'ERROR: Recreation of current data is not allowed inside user transaction !'
             return
         }
         this.flush_sync(false, true, 'overwrite_current_' + Date.now())
@@ -215,7 +214,7 @@ export class DBCore implements IDBCore {
         for (let doc of this.data.all[0].current) {
             log.inc_total()
             try {
-                mapper(doc)
+                creator(accum, doc)
             } catch(e) {
                 console.log(JSON.stringify(doc, null, '\t') + '\n' + e + '\n' + e.stack)
                 this.tran_rollback()
@@ -240,7 +239,7 @@ export class DBCore implements IDBCore {
         }
         if (allow_scan) {
             console.log('\nget("' + id + '") started...')
-            const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut)
+            const db = new DocReader(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
                 if (doc.id === id) {
                     this.data.cache_doc_immut.set(id, doc)
@@ -271,7 +270,7 @@ export class DBCore implements IDBCore {
         }
         if (allow_scan) {
             console.log('\nget_top("' + key + '") started...')
-            const db = new DBReaderWithClass(this.dbpath + DBMeta.data_immut)
+            const db = new DocReader(this.dbpath + DBMeta.data_immut)
             for (let doc = db.next(); doc; doc = db.next()) {
                 if (doc.key === key) {
                     this.data.cache_top_immut.set(key, doc)
@@ -293,7 +292,7 @@ export class DBCore implements IDBCore {
     add(doc: Document): [boolean, string?] {
         try {
             if (doc.id === undefined || doc.id === null || doc.id === '') {
-                doc.id = doc.key + '^' + Date.now()
+                doc.id = this.id_from_key(doc.key)
             }
             attach_doc_class(doc)
             this.tran_begin()
@@ -312,11 +311,14 @@ export class DBCore implements IDBCore {
         }
     }
 
+    key_from_id(id: string): string {
+        return key_from_id(id)
+    }
+    id_from_key(key: string): string {
+        return key + '^' + Date.now()
+    }
     doc_class(type: string): DocClass {
         return get_doc_class(type)
-    }
-    key_from_id(id: string): string {
-        return id.slice(0, id.indexOf('^'))
     }
 
     tran_begin() {
@@ -341,6 +343,8 @@ export class DBCore implements IDBCore {
         let cou = 0 
         let db = DBWriterSync.rewrite(path + DBMeta.data_current)
         for (const doc of this.data.current) {
+            delete doc.key
+            delete doc.ts
             db.add(doc, compact)
             cou++
         }
@@ -351,6 +355,8 @@ export class DBCore implements IDBCore {
             cou = 0
             db = DBWriterSync.rewrite(path + DBMeta.cache_doc)
             for (const doc of this.data.cache_doc_immut.values()) {
+                delete doc.key
+                delete doc.ts
                 db.add(doc, compact)
                 cou++
             }
@@ -360,6 +366,8 @@ export class DBCore implements IDBCore {
             cou = 0
             db = DBWriterSync.rewrite(path + DBMeta.cache_top)
             for (const doc of this.data.cache_top_immut.values()) {
+                delete doc.key
+                delete doc.ts
                 db.add(doc, compact)
                 cou++
             }
@@ -436,7 +444,7 @@ export class DBCore implements IDBCore {
     }
 }
 
-class DBReaderWithClass implements IDBReader {
+class DocReader implements IDBReader {
     private db: DBReaderSync
     readonly log?: Log
 
@@ -449,6 +457,9 @@ class DBReaderWithClass implements IDBReader {
         let doc = this.db.next()
         if (!doc) return false
         try {
+            if (doc.key !== undefined || doc.ts !== undefined) throw '"key" or "ts" member is allready exist in JSON !'
+            doc.key = key_from_id(doc.id)
+            doc.ts = ts_from_id(doc.id)
             attach_doc_class(doc)
             this.log?.print_progress()
             return doc
@@ -460,11 +471,20 @@ class DBReaderWithClass implements IDBReader {
     }
 }
 
+
+function key_from_id(id: string): string {
+    return id.slice(0, -14)
+}
+
+function ts_from_id(id: string): string {
+    return id.slice(-13)
+}
+
 function attach_doc_class(doc: Document) {
     doc.class = get_doc_class(doc.type)
 }
 
-class Log implements IDBLogger {
+class Log implements IDBLog {
     readonly printcou = 10000
     readonly start = Date.now()
     readonly source: string

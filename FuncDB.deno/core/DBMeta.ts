@@ -1,5 +1,5 @@
 export type Document = any
-export type Result = any
+export type Accumulator = any
 
 export const enum DBMeta {
     data_immut = 'data_immut_001.json',
@@ -18,18 +18,19 @@ export abstract class DocClass {
 
 export interface IDBCore {
     reduce(
-        filter: (result: Result, doc: Document) => boolean, 
-        reducer: (result: Result, doc: Document) => void,
-        result: Result,
+        filter: (accum: Accumulator, doc: Document) => boolean, 
+        reducer: (accum: Accumulator, doc: Document) => void,
+        accum: Accumulator,
         to_cache?: boolean,
-    ): Result
+    ): Accumulator
     reduce_top(
-        filter: (result: Result, doc: Document) => boolean, 
-        reducer: (result: Result, doc: Document) => void,
-        result: Result,
-    ): Result
-    overwrite_current(
-        mapper: (doc: Document) => void
+        filter: (accum: Accumulator, doc: Document) => boolean, 
+        reducer: (accum: Accumulator, doc: Document) => void,
+        accum: Accumulator,
+    ): Accumulator
+    recreate_current(
+        creator: (accum: Accumulator, doc: Document) => void,
+        accum: Accumulator
     ): void
     get(id: string, allow_scan?: boolean): Document | undefined
     get_top(key: string, allow_scan?: boolean): Document | undefined
@@ -43,7 +44,7 @@ export interface IDBCore {
     flush_async(and_cache?: boolean, compact?: boolean, snapshot?: string): Promise<void>
 }
 
-export interface IDBLogger {
+export interface IDBLog {
     inc_total(): void
     inc_parseerror(): void
     inc_typeerror(): void

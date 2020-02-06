@@ -1,21 +1,21 @@
 import { BufReader, BufWriter } from 'https://deno.land/std/io/bufio.ts'
-import { Document, DBMeta, IDBLogger } from './DBMeta.ts'
+import { Document, DBMeta, IDBLog } from './DBMeta.ts'
 
 const read_buf_size = 40960
-const chunk_buf_size = 409600 // надо сделать авторесайз чанка, иначе Result может когда-нибудь не влезть
+const chunk_buf_size = 409600 // надо сделать авторесайз чанка, иначе Accumulator может когда-нибудь не влезть
 const write_buf_size = 4096 
 // при записи через File.write() невозможно указать буфер отличный от стандартного, 
-// а бOльшие буфера просто молча обрезаются и не записываются в файл (дефект Deno)
-// проверется на 3-м примере
+// а бOльшие буфера просто молча обрезаются и не записываются в файл (проверется на 3-м примере)
+// дефект Deno
 
 export interface IDBReader {
     next(): Document | false | Promise<Document | false> 
-    readonly log?: IDBLogger
+    readonly log?: IDBLog
 }  
 
 export class DBReaderSync implements IDBReader {
     private file: Deno.File
-    readonly log?: IDBLogger
+    readonly log?: IDBLog
     private delim: number = DBMeta.delim
     private decoder = new TextDecoder()
 
@@ -25,7 +25,7 @@ export class DBReaderSync implements IDBReader {
     private buf3 = new Uint8Array(chunk_buf_size)
     private p3 = 0
 
-    constructor(fpath: string, log?: IDBLogger) {
+    constructor(fpath: string, log?: IDBLog) {
         this.file = Deno.openSync(fpath, 'r')
         this.log = log
     }
@@ -89,11 +89,11 @@ export class DBReaderSync implements IDBReader {
 
 export class DBReaderAsync implements IDBReader {
     private file: Deno.File
-    readonly log?: IDBLogger
+    readonly log?: IDBLog
     private reader: BufReader
     private delim: string = String.fromCharCode(DBMeta.delim)
 
-    constructor(fpath: string, log?: IDBLogger) {
+    constructor(fpath: string, log?: IDBLog) {
         this.file = Deno.openSync(fpath, 'r')
         this.log = log
         this.reader = new BufReader(this.file, read_buf_size)

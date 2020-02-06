@@ -66,7 +66,7 @@ for (const key of keys) {
 [,] = db.add(
     {
         type: 'purch.post',
-        key: 'purch.post.XXX',
+        key: 'purch.XXX',
         date: '2020-01-21',
         person: db.get_top('person.0').id,
         stock: db.get_top('stock.0').id,

@@ -3,6 +3,7 @@ import { Document, DocClass, IERPCore } from '../core/ERPMeta.ts'
 export default class SalePost extends DocClass {
     
     static on_add(doc: Document, db: IERPCore): [boolean, string?] {
+        let ok = true
         let err = ''
         doc.lines.forEach(line => {
             const balkey = db.balkey_from_ids('bal=', [line.nomen, doc.stock])
@@ -15,9 +16,11 @@ export default class SalePost extends DocClass {
                 bal.from = doc.id
                 db.add(bal)
             } else {
-                err += '\n"' + balkey + '": requested ' + line.qty + ' but balance is only ' + bal.qty
+                ok = false
+                err += '\n"' + balkey + '" - requested "' + line.qty + '" but balance is only "' + bal.qty + '"'
             }
         })
-        return err === '' ? [true,] : [false, err] 
+        if (!ok) err = 'ERROR adding "' + doc.type + '":' + err 
+        return [ok, err] 
     }
 }

@@ -1,13 +1,13 @@
-import { Document, Result, DocClass, IDBCore } from './DBMeta.ts'
+import { Document, Accumulator, DocClass, IDBCore } from './DBMeta.ts'
 
-export { Document, Result, DocClass }
+export { Document, Accumulator, DocClass }
 
 export type BalType = 'bal=' | 'bal+' | 'bal-'
 
 export interface Balance {
     type: BalType, 
     key: string, 
-    id?: string, 
+    id: string, 
     from?: string,
     qty: number,
     val: number,
