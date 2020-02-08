@@ -29,20 +29,25 @@ export interface IDBCore {
         reducer: (accum: Accumulator, doc: Document) => void,
         accum: Accumulator,
     ): Accumulator
-    rewrite_current(
+    recreate_current(
         creator: (accum: Accumulator, doc: Document) => void,
         accum: Accumulator
     ): void
     get(id: string, allow_scan?: boolean): Document | undefined
     get_top(key: string, allow_scan?: boolean): Document | undefined
     add(doc: Document): [boolean, string?]
+
     doc_class(type: string): DocClass
     key_from_id(id: string): string
+    ts_from_id(id: string): string
+    gen_id(key: string): string
+
     tran_begin(): void
     tran_commit(): void
     tran_rollback(): void
     flush_sync(and_cache?: boolean, compact?: boolean, snapshot?: string): void
     flush_async(and_cache?: boolean, compact?: boolean, snapshot?: string): Promise<void>
+    log?: IDBLog
 }
 
 export interface IDBLog {

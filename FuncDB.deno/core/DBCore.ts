@@ -42,6 +42,7 @@ class InMemoryData {
 export class DBCore implements IDBCore {
     private dbpath: string
     private data = new InMemoryData()
+    log?: Log
 
     constructor(dbpath) { 
         this.dbpath = dbpath
@@ -194,7 +195,7 @@ export class DBCore implements IDBCore {
         return accum
     }
 
-    rewrite_current( 
+    recreate_current( 
         creator: (accum: Accumulator, doc: Document) => void,
         accum: Accumulator
     ): void {
@@ -202,9 +203,9 @@ export class DBCore implements IDBCore {
             throw 'ERROR: Recreation of current data is not allowed inside user transaction !'
             return
         }
-        this.flush_sync(true, true, 'rewrite_current')
-        console.log('\nrewrite_current() started...')
-        const log = new Log('in-memory/current', 'memory')
+        this.flush_sync(true, true, 'recreate_current')
+        console.log('\nrecreate_current() started...')
+        const log = new Log('in-memory/current', 'recreate')
 
         const current_save = this.data.all[0].current.slice()
         const cache_doc_save = new Map(this.data.all[0].cache_doc)
@@ -226,7 +227,7 @@ export class DBCore implements IDBCore {
                 return
             }
         }
-
+        log.processed = this.data.current.length
         log.print_final()
     }
 
@@ -293,7 +294,7 @@ export class DBCore implements IDBCore {
     add(doc: Document): [boolean, string?] {
        try {
             if (doc.id === undefined || doc.id === null || doc.id === '') {
-                doc.id = this.id_from_key(doc.key)
+                doc.id = this.gen_id(doc.key)
             } else {
                 doc.key = key_from_id(doc.id)
             }
@@ -315,14 +316,17 @@ export class DBCore implements IDBCore {
         }
     }
 
+    doc_class(type: string): DocClass {
+        return get_doc_class(type)
+    }
     key_from_id(id: string): string {
         return key_from_id(id)
     }
-    id_from_key(key: string): string {
-        return key + '^' + Date.now()
+    ts_from_id(id: string): string {
+        return ts_from_id(id)
     }
-    doc_class(type: string): DocClass {
-        return get_doc_class(type)
+    gen_id(key: string): string {
+        return key + '^' + Date.now()
     }
 
     tran_begin() {
@@ -480,6 +484,7 @@ class DocReader implements IDBReader {
 
 
 function key_from_id(id: string): string {
+    if (id.slice(-14, -13) !== '^') throw id + '\nERROR: not an ID !'
     return id.slice(0, -14)
 }
 
@@ -559,6 +564,14 @@ class Log implements IDBLog {
 `    ====== scan ====== "${this.source}"
     ${this.total} docs total
     ${this.processed} docs processed \x1b[31m(${this.processerror}\x1b[0m reduce errors)
+    ${elapsed}s elapsed`
+                )
+                return 4
+            case 'recreate':
+                console.log(
+`    ====== scan ====== "${this.source}"
+    ${this.total} docs before
+    ${this.processed} docs after \x1b[31m(${this.processerror}\x1b[0m recreating errors)
     ${elapsed}s elapsed`
                 )
                 return 4

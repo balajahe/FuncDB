@@ -21,7 +21,7 @@ export class ERPCore extends DBCore implements IERPCore {
             bal = {
                 type: key.slice(0, key.indexOf('|')),
                 key: key,
-                id: this.id_from_key(key),
+                id: this.gen_id(key),
                 from: undefined,
                 qty: 0,
                 val: 0,
@@ -34,8 +34,8 @@ export class ERPCore extends DBCore implements IERPCore {
         return this.get_bal_by_key(this.balkey_from_ids(type, ids))
     }
 
-    rewrite_bals() {
-        this.rewrite_current(
+    recreate_bals() {
+        this.recreate_current(
             (_, doc) => { 
                 if (!doc.type.startsWith('bal')) {
                     const [ok, err] = this.add(doc)

@@ -40,6 +40,7 @@ gen_file(['purch.post', 'transfer.post', 'sale.post'])
 gen_docs(['purch.open', 'sale.open'])
 db.flush_sync() // база готова вместе с кэшем
 
+
 function gen_file(doc_types: string[]) {
     ts = Date.now()
     gen_persons()
