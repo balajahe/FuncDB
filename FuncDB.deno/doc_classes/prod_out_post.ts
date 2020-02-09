@@ -6,14 +6,14 @@ export default class ProdOutPost extends DocClass {
         doc.lines.forEach(line => {
             let bal = db.get_bal('bal=', [line.nomen, doc.prod])
             bal.qty -= line.qty
-            bal.val -= line.qty * line.price
+            bal.val -= line.qty * line.cost_norm
             bal.from = doc.id
             db.add(bal)
 
 
             bal = db.get_bal('bal=', [line.nomen, doc.stock])
             bal.qty += line.qty
-            bal.val += line.qty * line.price
+            bal.val += line.qty * line.cost_norm
             bal.from = doc.id
             db.add(bal)
         })

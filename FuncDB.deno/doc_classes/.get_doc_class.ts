@@ -1,6 +1,7 @@
 import { DocClass } from '../core/ERPMeta.ts' 
 
 import ref from './ref.ts'
+import doc from './doc.ts'
 import bal from './bal.ts'
 import purch_post from './purch_post.ts'
 import purch_open from './purch_open.ts'
@@ -15,7 +16,7 @@ export function get_doc_class(type: string) { // : DocClass { как указа�
         case 'person': return ref
         case 'nomen': return ref
         case 'stock': return ref
-        case 'prod': return ref
+        case 'prod': return doc
 
         case 'bal=': return bal
         case 'bal+': return bal

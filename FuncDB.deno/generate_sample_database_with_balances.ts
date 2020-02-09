@@ -6,6 +6,7 @@ const dbpath = './database/'
 let personcou = 5000
 let nomencou = 3000
 let stockcou = 50
+let prodcou = 3000
 let doccou = 10000
 let maxlinecou = 50
 const mut_scale = 1/10
@@ -32,9 +33,10 @@ Deno.openSync(dbpath + DBMeta.data_current, 'w').close()
 personcou = Math.floor(personcou * mut_scale)
 nomencou = Math.floor(nomencou * mut_scale)
 stockcou = Math.floor(stockcou * mut_scale)
+prodcou = Math.floor(prodcou * mut_scale)
 doccou = Math.floor(doccou * mut_scale)
 db = new ERPCore(dbpath)
-gen_file(['purch.post', 'transfer.post', 'sale.post'])
+gen_file(['purch.post', 'transfer.post', 'sale.post', 'prod.in.post', 'prod.out.post'])
 
 // генерируем открытые (неразнесенные) документы
 gen_docs(['purch.open', 'sale.open'])
@@ -46,6 +48,7 @@ function gen_file(doc_types: string[]) {
     gen_persons()
     gen_nomens()
     gen_stocks()
+    gen_prods()
     gen_docs(doc_types)
 }
 
@@ -94,6 +97,29 @@ async function gen_stocks() {
     } 
 }
 
+// production orders
+async function gen_prods() {
+    for (let i = 0; i < prodcou; i++) {
+        let doc: any =
+            {
+                type: 'prod',
+                id: 'prod.' + i + '^' + ts,
+                name: 'stock ' + i 
+            }
+        doc.lines = []
+        for (let j = 0; j < irand(1, maxlinecou); j++) {
+            doc.lines.push(
+                {
+                    nomen: 'nomen.' + irand(0, nomencou-1) + '^' + ts,
+                    qty: irand(1, 30),
+                    cost_norm: frand(100, 300)
+                }
+            )
+        }
+        db.add(doc)
+    } 
+}
+
 // all posted documents: purch, transfer, sale
 async function gen_docs(doc_types: string[]) {
     const date = new Date().toISOString().substr(0,10)
@@ -109,12 +135,17 @@ async function gen_docs(doc_types: string[]) {
                     date: date,
                     person: 'person.' + irand(0, personcou-1) + '^' + ts
                 }
-            if (!doctype.startsWith('transfer')) {
-                doc.stock = 'stock.' + irand(0, stockcou-1) + '^' + ts
-            } else {
+
+            if (doctype.startsWith('transfer')) {
                 doc.stock1 = 'stock.' + irand(0, stockcou-1) + '^' + ts
                 doc.stock2 = 'stock.' + irand(0, stockcou-1) + '^' + ts
+            } else if (doctype.startsWith('prod')) {
+                doc.prod = 'prod.' + irand(0, prodcou-1) + '^' + ts
+                doc.stock = 'stock.' + irand(0, stockcou-1) + '^' + ts
+            } else {
+                doc.stock = 'stock.' + irand(0, stockcou-1) + '^' + ts
             }
+
             doc.lines = []
             for (let j = 0; j < irand(1, maxlinecou); j++) {
                 const line: any = 
@@ -122,8 +153,10 @@ async function gen_docs(doc_types: string[]) {
                         nomen: 'nomen.' + irand(0, nomencou-1) + '^' + ts,
                         qty: doctype === 'purch.post' ? irand(1, 30*5) : irand(1, 30)
                     }
-                if (!doctype.startsWith('transfer')) {
+                if (doctype.startsWith('purch') || doctype.startsWith('sale')) {
                     line.price = frand(100, 300)
+                } else if (doctype === 'prod') {
+                    line.cost_norm = frand(100, 300)
                 }
                 doc.lines.push(line)
             }
