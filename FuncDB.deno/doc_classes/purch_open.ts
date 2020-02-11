@@ -1,6 +1,8 @@
 import { Document, DocClass, IERPCore } from '../core/ERPMeta.ts'
 
 export default class PurchOpen extends DocClass {
+    static cache_doc = true
+    static cache_top = true
 
     static on_add(doc: Document, db: IERPCore): [boolean, string?] {
         doc.lines.forEach(line => {
