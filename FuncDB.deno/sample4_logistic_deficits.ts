@@ -12,9 +12,9 @@ class ResultRow {
 }
 
 const res = db.reduce_top(
-    (_, doc) => doc.type.startsWith('bal'),
+    (_, doc) => doc.type.startsWith('bal') && !doc.from.startsWith('prod.out'),
     (result, doc) => {
-        const key = doc.key.slice(doc.key.indexOf('|')+1)
+        const key = doc.key.slice(doc.key.indexOf('|'))
         let row = result[key]
         if (row === undefined) {
             row = new ResultRow(key)
@@ -38,15 +38,16 @@ const res = db.reduce_top(
 )
 
 let rows = (<ResultRow[]>Object.values(res)).filter(v => v.deficit < 0)
-rows.sort((a, b) => b.p_deficit - a.p_deficit)
+//rows.sort((a, b) => b.p_deficit - a.p_deficit)
+rows.sort((a, b) => a.deficit - b.deficit)
 
-console.log('\n balance key          | in stock | expected | needs    | deficit  | % deficit')
-console.log('==============================================================================')
+console.log('\n balance key               | in stock | expected | needs    | deficit  | % deficit')
+console.log('===================================================================================')
 let cou = 0
 for (const row of rows) {
     cou++; if (cou > 30) { console.log(' < tail skipped >'); break }
     console.log(' ' +
-        row.key.padEnd(20) + ' | ' +
+        row.key.padEnd(25) + ' | ' +
         f(row.in_stock) + ' | ' +            
         f(row.expected) + ' | ' +                        
         f(row.needs) + ' | ' +            

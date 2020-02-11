@@ -1,6 +1,6 @@
 import { Document, DocClass, IERPCore } from '../core/ERPMeta.ts'
 
-export default class PurchPost extends DocClass {
+export default class PurchPosted extends DocClass {
     
     static on_add(doc: Document, db: IERPCore): [boolean, string?] {
         doc.lines.forEach(line => {

@@ -1,6 +1,6 @@
 import { Document, DocClass, IERPCore } from '../core/ERPMeta.ts'
 
-export default class SalePost extends DocClass {
+export default class SalePosted extends DocClass {
     
     static on_add(doc: Document, db: IERPCore): [boolean, string?] {
         let ok = true
@@ -9,8 +9,8 @@ export default class SalePost extends DocClass {
             const balkey = db.balkey_from_ids('bal=', [line.nomen, doc.stock])
             const bal = db.get_bal_by_key(balkey)
             if (bal.qty >= line.qty) {
-                line.from = bal.id
                 line.cost = bal.val / bal.qty // себестоимость в момент списания
+                line.from = bal.id
                 bal.qty -= line.qty
                 bal.val -= line.qty * line.cost
                 bal.from = doc.id

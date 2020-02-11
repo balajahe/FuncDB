@@ -10,7 +10,7 @@ class ResultRow { // строка результирующей таблицы
 }
 
 const res = db.reduce(
-    (_, doc) => doc.type.startsWith('purch') || doc.type.startsWith('transfer') || doc.type.startsWith('sale'),
+    (_, doc) => doc.type.startsWith('purch') || doc.type.startsWith('transfer') || doc.type.startsWith('sale') || doc.type.startsWith('prod'),
     (result, doc) => {
         let row = result[doc.type]
         if (row === undefined) {
@@ -20,7 +20,13 @@ const res = db.reduce(
         row.doccou++
         doc.lines.forEach(line => { // цикл по строкам документа
             row.linecou++
-            row.amount += line.price * line.qty // у строк перемещений нет цены, поэтому получим NaN
+            if (line.price !== undefined) {
+                row.amount += line.qty + line.price
+            } else if (line.cost !== undefined) {
+                row.amount += line.qty + line.cost
+            } else {
+                row.amount += line.qty + line.cost_std
+            }
         })
     },
     {} // инициализируем аккумулятор - Map не подходит, так как он не сериализуется
@@ -38,7 +44,7 @@ for (r of Object.values(res)) {
 
 const [ok, msg] = db.add(
     {
-        type: 'sale.post',
+        type: 'sale.posted',
         key: 'sale.XXX',
         date: '2020-01-21',
         person: db.get_top('person.0').id,

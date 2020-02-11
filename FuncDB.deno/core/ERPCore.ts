@@ -6,9 +6,9 @@ export { Document, Accumulator }
 export class ERPCore extends DBCore implements IERPCore {
    
     balkey_from_ids(type: BalType, ids: string[]): string {
-        let key = type
+        let key = type + '|'
         for (const id of ids) {
-            key += '|' + this.key_from_id(id)
+            key += this.key_from_id(id) + '|'
         }
         return key
     }

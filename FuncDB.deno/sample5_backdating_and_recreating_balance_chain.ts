@@ -6,7 +6,7 @@ db.recreate_bals()
 /*
 const [ok, msg] = db.add(
     {
-        type: 'sale.post',
+        type: 'sale.posted',
         key: 'sale.XXX',
         date: '2020-01-21',
         person: db.get_top('person.0').id,

@@ -10,7 +10,7 @@ class ResultRow { // строка результирующей таблицы
 }
 
 const res = db.reduce(
-    (_, doc) => doc.type === 'sale.post',
+    (_, doc) => doc.type === 'sale.posted',
     (result, doc) => {
         doc.lines.forEach((line) => {
             // наименования номенклатур получаем подзапросами к базе (реально берутся из кэша)

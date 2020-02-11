@@ -1,36 +1,39 @@
 import { DocClass } from '../core/ERPMeta.ts' 
 
 import ref from './ref.ts'
-import doc from './doc.ts'
 import bal from './bal.ts'
-import purch_post from './purch_post.ts'
+import doc_open from './doc_open.ts'
+
 import purch_open from './purch_open.ts'
-import sale_post from './sale_post.ts'
+import purch_posted from './purch_posted.ts'
 import sale_open from './sale_open.ts'
-import transfer_post from './transfer_post.ts'
-import prod_in_post from './prod_in_post.ts'
-import prod_out_post from './prod_out_post.ts'
+import sale_posted from './sale_posted.ts'
+import transfer_posted from './transfer_posted.ts'
+
+import prod_in_posted from './prod_in_posted.ts'
+import prod_out_posted from './prod_out_posted.ts'
 
 export function get_doc_class(type: string) { // : DocClass { как указать что возвращается не инстанс, а сам класс ?
     switch (type) {
         case 'person': return ref
         case 'nomen': return ref
         case 'stock': return ref
-        case 'prod': return doc
 
         case 'bal=': return bal
         case 'bal+': return bal
         case 'bal-': return bal
 
-        case 'purch.post': return purch_post
+        case 'purch.posted': return purch_posted
         case 'purch.open': return purch_open
-        case 'sale.post': return sale_post
+        case 'sale.posted': return sale_posted
         case 'sale.open': return sale_open
-        case 'transfer.post': return transfer_post
+        case 'transfer.posted': return transfer_posted
 
-        case 'prod.in.post': return prod_in_post
-        case 'prod.out.post': return prod_out_post
+        case 'prod.open': return doc_open
+        case 'prod.closed': return DocClass
+        case 'prod.in.posted': return prod_in_posted
+        case 'prod.out.posted': return prod_out_posted
 
-        default: throw `Error: document type "${type}" is not registered in "doc_classes/get_doc_class()" !`
+        default: throw `ERROR: document type "${type}" is not registered in "doc_classes/get_doc_class()" !`
     }
 }

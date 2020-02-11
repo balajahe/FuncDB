@@ -15,7 +15,7 @@ class ResultRow { // строка результирующей таблицы
 }
 
 const res = db.reduce(
-    (_, doc) => doc.type === 'purch.post' || doc.type === 'sale.post',
+    (_, doc) => doc.type === 'purch.posted' || doc.type === 'sale.posted',
     (result, doc) => {
         doc.lines.forEach((line) => {
             // типы получаем подзапросами к базе (реально берутся из кэша)
@@ -31,10 +31,10 @@ const res = db.reduce(
             }
             
             switch (doc.type) {
-                case 'purch.post':
+                case 'purch.posted':
                     row.debit_qty += line.qty
                     break
-                case'sale.post':
+                case'sale.posted':
                     row.credit_qty += line.qty
                     break
             }
@@ -65,7 +65,7 @@ for (const key of keys) {
 
 [,] = db.add(
     {
-        type: 'purch.post',
+        type: 'purch.posted',
         key: 'purch.XXX',
         date: '2020-01-21',
         person: db.get_top('person.0').id,
