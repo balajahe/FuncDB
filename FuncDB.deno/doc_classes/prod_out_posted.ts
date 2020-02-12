@@ -8,7 +8,7 @@ export default class ProdOutPosted extends DocClass {
         doc.lines.forEach(line => {
             let prod_line = prod.lines.find(l => l.nomen === line.nomen)
             //if (prod_line === undefined) throw 'ERROR adding "prod.out" - standard cost for nomen "' + line.nomen + '" is not found !'
-            if (prod_line === undefined) prod_line = line // заглушка
+            if (prod_line === undefined) prod_line = line // заглушка, так как при генерации мы не проверяли соответстие набора строк
             let bal = db.get_bal('bal=', [line.nomen, doc.prod])
             bal.qty -= line.qty
             bal.val -= line.qty * prod_line.cost_std

@@ -3,10 +3,7 @@ import { Document, DBMeta, IDBLog } from './DBMeta.ts'
 
 const read_buf_size = 40960
 const chunk_buf_size = 409600 // надо сделать авторесайз чанка, иначе Accumulator может когда-нибудь не влезть
-const write_buf_size = 4096 
-// при записи через File.write() невозможно указать буфер отличный от стандартного, 
-// а бOльшие буфера просто молча обрезаются и не записываются в файл (проверется на 3-м примере)
-// дефект Deno
+const write_buf_size = 40960 
 
 export interface IDBReader {
     next(): Document | false | Promise<Document | false> 
@@ -143,7 +140,7 @@ export class DBWriterSync {
             } else {
                 buf = arr.subarray(i, i + write_buf_size)
             }
-            this.file.writeSync(buf)
+            Deno.writeAllSync(this.file, buf)
             i += write_buf_size
         }
     }
